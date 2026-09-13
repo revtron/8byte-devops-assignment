@@ -1,0 +1,29 @@
+# --- secrets: never commit ---
+*.txt
+!docs/**/*.txt
+*.pem
+*.key
+.env
+.env.*
+!.env.example
+terraform/**/*.tfvars
+!terraform/**/*.example.tfvars
+!terraform/envs/*.tfvars
+
+# --- terraform ---
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+
+# --- node ---
+node_modules/
+coverage/
+npm-debug.log*
+
+# --- misc ---
+.DS_Store
+Thumbs.db
+*.pdf
