@@ -11,21 +11,11 @@ function createApp({ repo, db, config, log = logger }) {
 
   app.disable('x-powered-by');
   app.use(metrics.middleware);
-
-  const httpLoggerOpts = {
+  app.use(pinoHttp({
+    logger: log,
     autoLogging: { ignore: (req) => req.url === '/health' || req.url === '/metrics' },
     customProps: () => ({ env: config.appEnv, version: config.version }),
-  };
-  // pino-http requires a real pino instance for `logger` (it calls `.child()`
-  // and relies on pino internals like `.levels`). Test doubles for `log` are
-  // plain objects, so only wire it through when it looks like a real pino
-  // logger; otherwise let pino-http build its own (silenced) instance.
-  if (log && typeof log.child === 'function' && log.levels) {
-    httpLoggerOpts.logger = log;
-  } else {
-    httpLoggerOpts.level = 'silent';
-  }
-  app.use(pinoHttp(httpLoggerOpts));
+  }));
   app.use(express.json({ limit: '10kb' }));
 
   app.get('/health', async (_req, res) => {

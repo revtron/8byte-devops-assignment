@@ -1,4 +1,5 @@
 const request = require('supertest');
+const pino = require('pino');
 const { createApp } = require('../../src/app');
 
 function fakeRepo() {
@@ -26,7 +27,7 @@ function build({ dbOk = true } = {}) {
   const repo = fakeRepo();
   const db = { ping: jest.fn(async () => { if (!dbOk) throw new Error('down'); }) };
   const config = { appEnv: 'test', version: 'v1', port: 0 };
-  const log = { info() {}, error() {}, warn() {}, child() { return this; } };
+  const log = pino({ level: 'silent' });
   return { app: createApp({ repo, db, config, log }), repo };
 }
 
