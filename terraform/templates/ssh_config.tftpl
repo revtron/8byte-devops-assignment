@@ -1,0 +1,22 @@
+Host management
+  HostName ${management_ip}
+  User management
+  IdentityFile ~/.ssh/8byte
+  # Jenkins UI
+  LocalForward 8080 localhost:8080
+
+Host backend
+  HostName ${backend_ip}
+  User backend
+  IdentityFile ~/.ssh/8byte
+  ProxyJump management
+
+Host mon
+  HostName ${mon_ip}
+  User mon
+  IdentityFile ~/.ssh/8byte
+  ProxyJump management
+  # Grafana
+  LocalForward 3000 localhost:3000
+  # Prometheus
+  LocalForward 9090 localhost:9090

@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+# Generic first-boot bootstrap for the "${role}" host, rendered by Terraform.
+# Does only the host-agnostic part (user, sshd, docker, env file, repo clone)
+# and then hands off to scripts/bootstrap/${role}.sh from the repo.
+# Safe to re-run.
+set -euxo pipefail
+exec > >(tee -a /var/log/8byte-bootstrap.log) 2>&1
+
+ROLE="${role}"
+REGION="${region}"
+GITHUB_REPO="${github_repo}"
+GIT_REF="${git_ref}"
+GITHUB_SECRET_ID="${github_secret_id}"
+COMPOSE_VERSION="${compose_version}"
+REPO_DIR=/opt/8byte/repo
+ENV_FILE=/etc/8byte/env
+
+echo "=== 8byte bootstrap ($ROLE) started $(date -Is) ==="
+
+# --- 1. login user + sshd hardening --------------------------------------------
+if ! id "$ROLE" >/dev/null 2>&1; then
+  useradd --create-home --shell /bin/bash "$ROLE"
+fi
+install -d -m 700 -o "$ROLE" -g "$ROLE" "/home/$ROLE/.ssh"
+printf '%s\n' "${admin_public_key}" > "/home/$ROLE/.ssh/authorized_keys"
+chmod 600 "/home/$ROLE/.ssh/authorized_keys"
+chown "$ROLE:$ROLE" "/home/$ROLE/.ssh/authorized_keys"
+printf '%s ALL=(ALL) NOPASSWD:ALL\n' "$ROLE" > "/etc/sudoers.d/90-$ROLE"
+chmod 440 "/etc/sudoers.d/90-$ROLE"
+
+# AL2023 sshd_config includes sshd_config.d/*.conf first; first match wins.
+cat > /etc/ssh/sshd_config.d/10-8byte.conf <<SSHD
+PasswordAuthentication no
+PermitRootLogin no
+AllowUsers $ROLE
+SSHD
+sshd -t
+systemctl restart sshd
+
+# --- 2. docker, git, jq, compose plugin ------------------------------------------
+dnf install -y docker git jq
+systemctl enable --now docker
+usermod -aG docker "$ROLE"
+
+PLUGIN_DIR=/usr/local/lib/docker/cli-plugins
+install -d -m 755 "$PLUGIN_DIR"
+if ! docker compose version >/dev/null 2>&1; then
+  curl -fsSL "https://github.com/docker/compose/releases/download/v$COMPOSE_VERSION/docker-compose-linux-x86_64" \
+    -o "$PLUGIN_DIR/docker-compose"
+  chmod 755 "$PLUGIN_DIR/docker-compose"
+fi
+docker compose version
+
+# --- 3. /etc/8byte/env -------------------------------------------------------------
+install -d -m 755 /etc/8byte
+cat > "$ENV_FILE" <<'ENV'
+ROLE=${role}
+AWS_REGION=${region}
+PROJECT=${project}
+GITHUB_REPO=${github_repo}
+GIT_REF=${git_ref}
+DOCKERHUB_REPO=${dockerhub_repo}
+DB_SECRET_ID=${db_secret_id}
+DOCKERHUB_SECRET_ID=${dockerhub_secret_id}
+GITHUB_SECRET_ID=${github_secret_id}
+JENKINS_SECRET_ID=${jenkins_secret_id}
+SNS_TOPIC_ARN=${sns_topic_arn}
+ALB_DNS=${alb_dns}
+BACKEND_PRIVATE_IP=${backend_private_ip}
+MON_PRIVATE_IP=${mon_private_ip}
+%{ if backend_instance_id != "" ~}
+BACKEND_INSTANCE_ID=${backend_instance_id}
+%{ endif ~}
+ENV
+chown root:docker "$ENV_FILE"
+chmod 0640 "$ENV_FILE"
+
+# --- 4. clone the repo -------------------------------------------------------------
+# The token (if any) must not appear in this log or in .git/config.
+set +x
+GITHUB_TOKEN="$(aws secretsmanager get-secret-value \
+  --region "$REGION" --secret-id "$GITHUB_SECRET_ID" \
+  --query SecretString --output text 2>/dev/null | jq -r '.token // empty' 2>/dev/null || true)"
+if [ -n "$GITHUB_TOKEN" ]; then
+  CLONE_URL="https://x-access-token:$GITHUB_TOKEN@github.com/$GITHUB_REPO"
+  echo "github token found; cloning with credentials"
+else
+  CLONE_URL="https://github.com/$GITHUB_REPO"
+  echo "no github token; cloning anonymously"
+fi
+if [ -d "$REPO_DIR/.git" ]; then
+  git -C "$REPO_DIR" remote set-url origin "$CLONE_URL"
+  git -C "$REPO_DIR" fetch --quiet origin "$GIT_REF"
+  git -C "$REPO_DIR" checkout --quiet --force FETCH_HEAD
+else
+  install -d -m 755 "$(dirname "$REPO_DIR")"
+  git clone --quiet --branch "$GIT_REF" "$CLONE_URL" "$REPO_DIR"
+fi
+git -C "$REPO_DIR" remote set-url origin "https://github.com/$GITHUB_REPO"
+unset GITHUB_TOKEN CLONE_URL
+set -x
+chown -R "$ROLE:$ROLE" "$REPO_DIR"
+git -C "$REPO_DIR" --no-pager log -1 --oneline
+
+# --- 5. hand off to the role script --------------------------------------------------
+ROLE_SCRIPT="$REPO_DIR/scripts/bootstrap/$ROLE.sh"
+if [ -f "$ROLE_SCRIPT" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  . "$ENV_FILE"
+  set +a
+  bash "$ROLE_SCRIPT"
+else
+  echo "WARN: $ROLE_SCRIPT not found in $GITHUB_REPO@$GIT_REF; nothing role-specific to run"
+fi
+
+echo "=== 8byte bootstrap ($ROLE) finished $(date -Is) ==="
