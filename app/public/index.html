@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Todo</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="card">
+    <header>
+      <h1>Todo</h1>
+      <span id="badge" class="badge">…</span>
+    </header>
+    <form id="add-form" autocomplete="off">
+      <input id="title" name="title" placeholder="What needs doing?" maxlength="200" required>
+      <button type="submit">Add</button>
+    </form>
+    <p id="error" class="error" hidden></p>
+    <ul id="list" class="list"></ul>
+    <footer><span id="count">0 items</span></footer>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
