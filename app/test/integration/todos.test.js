@@ -1,3 +1,4 @@
+const pino = require('pino');
 const request = require('supertest');
 const { createDb } = require('../../src/db');
 const { createRepo } = require('../../src/todos/repo');
@@ -6,7 +7,6 @@ const { createApp } = require('../../src/app');
 const url = process.env.DATABASE_URL;
 const describeIfDb = url ? describe : describe.skip;
 if (!url) {
-  // eslint-disable-next-line no-console
   console.log('DATABASE_URL not set — skipping integration tests');
 }
 
@@ -18,7 +18,7 @@ describeIfDb('todos API against PostgreSQL', () => {
     await db.init();
     await db.query('TRUNCATE todos RESTART IDENTITY');
     const config = { appEnv: 'test', version: 'it', port: 0 };
-    const log = { info() {}, error() {}, warn() {}, child() { return this; } };
+    const log = pino({ level: 'silent' });
     app = createApp({ repo: createRepo(db), db, config, log });
   });
 
