@@ -1,5 +1,7 @@
 # --- secrets: never commit ---
 *.txt
+*.csv
+claude_accessKeys*
 !docs/**/*.txt
 *.pem
 *.key
