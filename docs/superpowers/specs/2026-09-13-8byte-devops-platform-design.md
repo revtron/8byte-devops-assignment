@@ -233,7 +233,12 @@ Egress: all hosts allow all outbound (via NAT for private). No other inbound.
   metadata by a boot script, so nothing is hard-coded in the YAML.
 - Setup wizard disabled; JCasC defines the `admin` user, the three
   credentials, and a **Multibranch Pipeline** job `todo` pointing at the GitHub
-  repo, discovering branches and PRs, periodic scan every 2 minutes.
+  repo (GitHub Branch Source plugin, authenticated with the PAT), discovering
+  branches and PRs, periodic scan every **1 minute** so every push starts a
+  build within 60 s. Build results are posted back to GitHub as commit
+  statuses (green tick / red cross on commits and PRs). Inbound webhooks are
+  deliberately not used so Jenkins stays fully private; noted as the upgrade
+  path.
 
 ### 6.2 `Jenkinsfile` stages
 
