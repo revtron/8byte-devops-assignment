@@ -38,18 +38,20 @@ scrape_configs:
       - target_label: host
         replacement: ${HOSTNAME_LABEL}
     pipeline_stages:
-      # App logs are pino JSON: {"level":30,"time":...,"env":"prod","req":{...},...}.
-      # Non-JSON lines (e.g. prometheus/grafana logfmt) fail this stage silently
-      # and are shipped unchanged.
-      - json:
-          expressions:
-            level: level
-      # pino emits numeric levels; map them to names so the label is readable.
-      - template:
-          source: level
-          template: '{{ if eq .Value "10" }}trace{{ else if eq .Value "20" }}debug{{ else if eq .Value "30" }}info{{ else if eq .Value "40" }}warn{{ else if eq .Value "50" }}error{{ else if eq .Value "60" }}fatal{{ else }}{{ .Value }}{{ end }}'
-      - labels:
-          level:
+      # Only the app containers log pino JSON ({"level":30,"time":...,"env":"prod",
+      # "req":{...},...}); the monitoring containers log logfmt and are shipped
+      # unchanged. pino levels are numeric, so map them to names for the label.
+      - match:
+          selector: '{container=~"todo-.*"}'
+          stages:
+            - json:
+                expressions:
+                  level: level
+            - template:
+                source: level
+                template: '{{ if eq .Value "10" }}trace{{ else if eq .Value "20" }}debug{{ else if eq .Value "30" }}info{{ else if eq .Value "40" }}warn{{ else if eq .Value "50" }}error{{ else if eq .Value "60" }}fatal{{ else }}{{ .Value }}{{ end }}'
+            - labels:
+                level:
 
   # (b) Host system logs.
   - job_name: system

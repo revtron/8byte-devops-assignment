@@ -171,7 +171,7 @@ promtail on each host ships two streams to Loki:
 - `job="docker"`: every container found through `/var/run/docker.sock`, labels
   `container` (name without the leading `/`), `env` (docker label `env`, i.e.
   `prod`/`staging` for the app, `monitoring` for the stack), `host`, and
-  `level` extracted from the pino JSON line (numeric levels mapped to
+  `level` extracted from the pino JSON line of the `todo-*` containers (numeric levels mapped to
   `info`/`warn`/`error`...). Nothing per-request becomes a label.
 - `job="system"`: `/var/log/messages`, `/var/log/secure`,
   `/var/log/cloud-init-output.log`, `/var/log/8byte-bootstrap.log`, label `host`.
