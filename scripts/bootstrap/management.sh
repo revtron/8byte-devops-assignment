@@ -193,8 +193,8 @@ log "wrote $OVERRIDE_DIR/override.conf"
 
 # --- start ---------------------------------------------------------------------
 systemctl daemon-reload
-systemctl enable --now jenkins
-systemctl restart jenkins   # apply new env/plugins on re-runs (no-op cost on first boot)
+systemctl enable jenkins
+systemctl restart jenkins   # single start; on re-runs this applies the new env/plugins
 
 log "waiting for Jenkins on http://localhost:8080 (up to 5 min)"
 for i in $(seq 1 60); do

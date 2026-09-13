@@ -8,8 +8,9 @@
 #   1. node_exporter + promtail (scripts owned by the monitoring track, called
 #      if present)
 #   2. psql client
-#   3. creates todo_prod / todo_staging on RDS if missing (creds from 8byte/db)
-#   4. installs /opt/todo/deploy.sh
+#   3. installs /opt/todo/deploy.sh
+#   4. creates todo_prod / todo_staging on RDS if missing (creds from 8byte/db);
+#      RDS unreachable -> warning, steps 4-5 skipped
 #   5. first deploy of prod + staging from :latest (tolerated to fail while
 #      the image does not exist yet)
 set -euo pipefail
@@ -46,7 +47,14 @@ else
   log "psql already installed: $(psql --version)"
 fi
 
-# --- 3. databases -------------------------------------------------------------
+# --- 3. deploy script ---------------------------------------------------------
+# Installed before anything that can wait or fail, so /opt/todo/deploy.sh always
+# exists for Jenkins (SSM) even if RDS is slow on first boot.
+install -d -m 0755 /opt/todo
+install -m 0755 -o root -g root "$REPO_DIR/scripts/deploy.sh" /opt/todo/deploy.sh
+log "installed /opt/todo/deploy.sh"
+
+# --- 4. databases -------------------------------------------------------------
 log "reading $DB_SECRET_ID"
 SECRET_JSON="$(aws secretsmanager get-secret-value --region "$AWS_REGION" \
   --secret-id "$DB_SECRET_ID" --query SecretString --output text)"
@@ -62,33 +70,39 @@ DB_STAGING="$(jq -r '.dbname_staging // "todo_staging"' <<<"$SECRET_JSON")"
 export PGPASSWORD="$DB_PASS"
 ADMIN_URL="postgres://${DB_USER}@${DB_HOST}:${DB_PORT}/postgres?sslmode=require"
 
-log "waiting for RDS at $DB_HOST:$DB_PORT"
+# RDS unreachable is a warning, not fatal: deploy.sh is already installed
+# (step 3) so Jenkins can deploy once the DB is up; only DB creation and the
+# initial deploys are skipped. Re-run this script to retry.
+RDS_UP=false
+log "waiting for RDS at $DB_HOST:$DB_PORT (up to 5 min)"
 for i in $(seq 1 30); do
-  if psql "$ADMIN_URL" -tAc 'SELECT 1' >/dev/null 2>&1; then break; fi
-  if [[ "$i" -eq 30 ]]; then echo "error: cannot reach RDS" >&2; exit 1; fi
+  if psql "$ADMIN_URL" -tAc 'SELECT 1' >/dev/null 2>&1; then RDS_UP=true; break; fi
   sleep 10
 done
 
-for db in "$DB_PROD" "$DB_STAGING"; do
-  if psql "$ADMIN_URL" -tAc "SELECT 1 FROM pg_database WHERE datname='$db'" | grep -q 1; then
-    log "database $db exists"
-  else
-    log "creating database $db"
-    psql "$ADMIN_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"$db\""
-  fi
-done
+if [[ "$RDS_UP" == true ]]; then
+  for db in "$DB_PROD" "$DB_STAGING"; do
+    if psql "$ADMIN_URL" -tAc "SELECT 1 FROM pg_database WHERE datname='$db'" | grep -q 1; then
+      log "database $db exists"
+    else
+      log "creating database $db"
+      psql "$ADMIN_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"$db\""
+    fi
+  done
+else
+  log "WARNING: RDS not reachable after 5 min — skipping database creation and initial deploys; re-run later"
+fi
 unset PGPASSWORD
-
-# --- 4. deploy script ---------------------------------------------------------
-install -d -m 0755 /opt/todo
-install -m 0755 -o root -g root "$REPO_DIR/scripts/deploy.sh" /opt/todo/deploy.sh
-log "installed /opt/todo/deploy.sh"
 
 # --- 5. first deploy ----------------------------------------------------------
 # On the very first boot the image usually does not exist on Docker Hub yet
 # (Jenkins has not run). deploy.sh fails then; log it and carry on — the first
 # Jenkins build deploys via SSM.
 for env_name in prod staging; do
+  if [[ "$RDS_UP" != true ]]; then
+    log "skipping initial deploy of $env_name (RDS unreachable)"
+    continue
+  fi
   if /opt/todo/deploy.sh "$env_name" latest; then
     log "deployed $env_name from :latest"
   else

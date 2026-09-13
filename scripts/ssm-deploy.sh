@@ -21,12 +21,21 @@ case "$ENV_NAME" in
   prod|staging) ;;
   *) echo "error: env must be prod or staging (got '$ENV_NAME')" >&2; exit 2 ;;
 esac
+# TAG is interpolated into the SSM command string: allow docker-tag characters only.
+if [[ ! "$TAG" =~ ^[A-Za-z0-9._-]+$ ]]; then
+  echo "error: tag '$TAG' contains characters outside [A-Za-z0-9._-]" >&2
+  exit 2
+fi
 : "${BACKEND_INSTANCE_ID:?BACKEND_INSTANCE_ID is not set}"
 : "${AWS_REGION:?AWS_REGION is not set}"
 
 POLL_SECONDS=5
-MAX_SECONDS=600   # 10 minutes, generous: image pull + 60 s health wait
+MAX_SECONDS=600   # polling budget: 10 minutes, generous for image pull + 60 s health wait
 
+# --timeout-seconds is the SSM *delivery* timeout (how long the command may
+# wait for the agent to pick it up), not an execution limit. Execution is
+# bounded by the document's executionTimeout (default 1 h) and by our polling
+# budget below.
 echo "==> deploy $ENV_NAME $TAG on $BACKEND_INSTANCE_ID ($AWS_REGION)"
 COMMAND_ID="$(aws ssm send-command \
   --region "$AWS_REGION" \

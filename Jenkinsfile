@@ -15,7 +15,7 @@
 // Deploy <tag> to <envName> on the backend host through SSM Run Command.
 // The send/poll logic lives in scripts/ssm-deploy.sh so it can be linted with
 // `bash -n` and run by hand from the management box.
-def deploy(String envName, String tag) {
+def ssmDeploy(String envName, String tag) {
     withEnv(["DEPLOY_ENV=${envName}", "DEPLOY_TAG=${tag}"]) {
         sh 'bash scripts/ssm-deploy.sh "$DEPLOY_ENV" "$DEPLOY_TAG"'
     }
@@ -83,12 +83,11 @@ pipeline {
             // EXECUTOR_NUMBER (unique per running build on a node).
             environment {
                 IT_PG_NAME = "it-pg-${env.EXECUTOR_NUMBER}"
-                IT_PG_PORT = "1543${env.EXECUTOR_NUMBER}"
-                DATABASE_URL = "postgres://todo:todo@127.0.0.1:1543${env.EXECUTOR_NUMBER}/todo_test"
             }
             steps {
                 sh '''#!/bin/bash
                     set -euo pipefail
+                    IT_PG_PORT=$((15430 + EXECUTOR_NUMBER))
                     docker rm -f "$IT_PG_NAME" >/dev/null 2>&1 || true
                     docker run -d --name "$IT_PG_NAME" \
                         -e POSTGRES_USER=todo -e POSTGRES_PASSWORD=todo -e POSTGRES_DB=todo_test \
@@ -102,7 +101,7 @@ pipeline {
                     done
                 '''
                 dir('app') {
-                    sh 'npm run test:integration'
+                    sh 'DATABASE_URL="postgres://todo:todo@127.0.0.1:$((15430 + EXECUTOR_NUMBER))/todo_test" npm run test:integration'
                 }
             }
             post {
@@ -117,13 +116,16 @@ pipeline {
         stage('Dependency scan') {
             steps {
                 // npm audit is advisory only (documented): the npm advisory DB is
-                // noisy for dev-only deps. Trivy on the lockfile is the gate.
+                // noisy for dev-only deps. Trivy on the lockfile is the gate;
+                // node_modules (installed above, dev deps included) is skipped so
+                // only the lockfile's production dependency graph is judged.
                 dir('app') {
                     sh 'npm audit --audit-level=high || true'
                 }
                 sh '''#!/bin/bash
                     set -euo pipefail
-                    trivy fs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --no-progress app/ | tee trivy-fs.txt
+                    trivy fs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --no-progress \
+                        --skip-dirs '**/node_modules' app/ | tee trivy-fs.txt
                 '''
             }
             post { failure { markStageFailed() } }
@@ -184,7 +186,7 @@ pipeline {
         stage('Deploy staging') {
             when { branch 'main' }
             steps {
-                deploy('staging', env.GIT_SHA)
+                ssmDeploy('staging', env.GIT_SHA)
             }
             post { failure { markStageFailed() } }
         }
@@ -224,7 +226,7 @@ pipeline {
             when { branch 'main' }
             steps {
                 // Same tag as staging: the image is promoted, never rebuilt.
-                deploy('prod', env.GIT_SHA)
+                ssmDeploy('prod', env.GIT_SHA)
             }
             post { failure { markStageFailed() } }
         }
@@ -243,10 +245,11 @@ pipeline {
             // Email via SNS (topic + subscription are created by Terraform).
             // Never fail the post block itself if SNS is unreachable.
             sh '''#!/bin/bash
-                set -u
-                aws sns publish --region "$AWS_REGION" --topic-arn "$SNS_TOPIC_ARN" \
-                    --subject "Jenkins FAILED: $JOB_NAME #$BUILD_NUMBER" \
-                    --message "Build $BUILD_URL (branch ${BRANCH_NAME:-?}, commit ${GIT_SHA:-?}) failed at stage: ${FAILED_STAGE:-unknown}" \
+                # No set -u: a missing variable must fall through to the || warning,
+                # never abort the notifier itself.
+                aws sns publish --region "${AWS_REGION:-}" --topic-arn "${SNS_TOPIC_ARN:-}" \
+                    --subject "Jenkins FAILED: ${JOB_NAME:-?} #${BUILD_NUMBER:-?}" \
+                    --message "Build ${BUILD_URL:-?} (branch ${BRANCH_NAME:-?}, commit ${GIT_SHA:-?}) failed at stage: ${FAILED_STAGE:-unknown}" \
                     || echo "WARNING: SNS publish failed" >&2
             '''
         }

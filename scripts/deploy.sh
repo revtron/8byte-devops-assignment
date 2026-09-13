@@ -40,8 +40,8 @@ set -a; source "$ENV_FILE"; set +a
 : "${DOCKERHUB_REPO:?DOCKERHUB_REPO missing from $ENV_FILE}"
 AWS_REGION="${AWS_REGION:-ap-south-1}"
 DB_SECRET_ID="${DB_SECRET_ID:-8byte/db}"
-# node-postgres verifies the server certificate for sslmode=require. Override
-# in /etc/8byte/env (DB_SSLMODE=no-verify) if the image does not trust the RDS CA.
+# The app image bundles the RDS CA, so full verification (require) is the
+# default; DB_SSLMODE in /etc/8byte/env overrides it.
 DB_SSLMODE="${DB_SSLMODE:-require}"
 
 CONTAINER="todo-$ENV_NAME"
@@ -97,13 +97,15 @@ docker run -d \
   "$IMAGE" >/dev/null
 
 # --- health wait --------------------------------------------------------------
+HEALTH_BODY="$(mktemp)"
+trap 'rm -f "$HEALTH_BODY"' EXIT
 log "waiting up to ${HEALTH_TIMEOUT}s for $HEALTH_URL"
-for (( elapsed = 0; elapsed < HEALTH_TIMEOUT; elapsed += 2 )); do
-  code="$(curl -s -o /tmp/todo-health.json -w '%{http_code}' --max-time 3 "$HEALTH_URL" 2>/dev/null)" || true
+SECONDS=0   # bash wall clock: curl time-outs and sleeps both count against the budget
+while (( SECONDS < HEALTH_TIMEOUT )); do
+  code="$(curl -s -o "$HEALTH_BODY" -w '%{http_code}' --max-time 3 "$HEALTH_URL" 2>/dev/null)" || true
   code="${code:-000}"
   if [[ "$code" == "200" ]]; then
-    log "healthy after ${elapsed}s: $(cat /tmp/todo-health.json)"
-    rm -f /tmp/todo-health.json
+    log "healthy after ${SECONDS}s: $(cat "$HEALTH_BODY")"
     log "deployed $IMAGE as $CONTAINER"
     exit 0
   fi
@@ -117,7 +119,6 @@ done
 echo "[deploy $ENV_NAME] ERROR: $CONTAINER did not become healthy within ${HEALTH_TIMEOUT}s (last /health: ${code:-none})" >&2
 echo "----- last 50 log lines of $CONTAINER -----" >&2
 docker logs --tail 50 "$CONTAINER" >&2 2>&1 || true
-rm -f /tmp/todo-health.json
 if [[ -n "$PREVIOUS_IMAGE" ]]; then
   echo "[deploy $ENV_NAME] rollback hint: $0 $ENV_NAME ${PREVIOUS_IMAGE##*:}" >&2
 fi

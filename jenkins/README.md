@@ -135,7 +135,9 @@ latency. To move to push-driven builds:
   tests use container name/port derived from `EXECUTOR_NUMBER`, so two
   branches building at once do not collide.
 - `npm audit` is non-blocking by design; `trivy fs` on the lockfile is the
-  gate. Both outputs are in the build log; Trivy reports are archived.
+  gate (`app/node_modules` is skipped, so dev-only dependencies installed
+  for lint/tests do not block builds). Both outputs are in the build log;
+  Trivy reports are archived.
 - The Terraform stage runs `hashicorp/terraform:1.9` in Docker and is skipped
   on a branch's first build (empty change set).
 - Plugins are installed as `latest` against the installed LTS update centre;
