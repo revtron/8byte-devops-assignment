@@ -1,0 +1,112 @@
+# Jenkins Configuration as Code for the 8byte management host.
+#
+# Loaded at startup from CASC_JENKINS_CONFIG=/var/lib/jenkins/casc/jenkins.yaml
+# (copied here by scripts/bootstrap/management.sh). Every ${VAR} below is
+# resolved by JCasC from the Jenkins process environment, which the systemd
+# drop-in /etc/systemd/system/jenkins.service.d/override.conf populates from
+# Secrets Manager (8byte/jenkins, 8byte/dockerhub, 8byte/github) and
+# /etc/8byte/env. Nothing secret or environment-specific is stored in git.
+#
+# Re-apply after editing: re-run the bootstrap script, or on the box
+#   sudo systemctl restart jenkins   (or Manage Jenkins > Configuration as Code > Reload)
+
+jenkins:
+  systemMessage: "8byte todo — Jenkins is configured by JCasC (jenkins/jenkins.yaml in the repo). Manual changes are overwritten on restart."
+  numExecutors: 2
+  mode: NORMAL
+  scmCheckoutRetryCount: 2
+
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: admin
+          name: "Administrator"
+          password: ${JENKINS_ADMIN_PASSWORD}
+
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+  # Global environment for every build. The Jenkinsfile relies on these.
+  globalNodeProperties:
+    - envVars:
+        env:
+          - key: DOCKERHUB_REPO
+            value: ${DOCKERHUB_REPO}
+          - key: BACKEND_INSTANCE_ID
+            value: ${BACKEND_INSTANCE_ID}
+          - key: SNS_TOPIC_ARN
+            value: ${SNS_TOPIC_ARN}
+          - key: ALB_DNS
+            value: ${ALB_DNS}
+          - key: AWS_REGION
+            value: ${AWS_REGION}
+
+security:
+  # Job DSL scripts here come from this admin-controlled file; skip the
+  # script-approval round trip that would otherwise block the seed on first boot.
+  globalJobDslSecurityConfiguration:
+    useScriptSecurity: false
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - usernamePassword:
+              scope: GLOBAL
+              id: dockerhub
+              description: "Docker Hub (push todo image) — from Secrets Manager 8byte/dockerhub"
+              username: ${DOCKERHUB_USERNAME}
+              password: ${DOCKERHUB_TOKEN}
+          - usernamePassword:
+              scope: GLOBAL
+              id: github-token
+              description: "GitHub PAT (branch scanning + commit statuses) — from Secrets Manager 8byte/github"
+              username: ${GITHUB_OWNER}
+              password: ${GITHUB_TOKEN}
+
+unclassified:
+  location:
+    url: http://localhost:8080/
+    adminAddress: "Jenkins <jenkins@localhost>"
+
+jobs:
+  - script: |
+      // Multibranch pipeline for the todo repo. Branches and PRs are discovered
+      // by a 1-minute periodic scan (no inbound webhook: Jenkins is reachable
+      // only through the SSH tunnel). Build results are reported back to
+      // GitHub as commit statuses by the GitHub Branch Source plugin using the
+      // same credential.
+      multibranchPipelineJob('todo') {
+        displayName('todo')
+        description('CI/CD for ${GITHUB_OWNER}/${GITHUB_REPO_NAME} — see Jenkinsfile at the repo root')
+        branchSources {
+          github {
+            id('todo-github')
+            repoOwner("${GITHUB_OWNER}")
+            repository("${GITHUB_REPO_NAME}")
+            scanCredentialsId('github-token')
+            buildOriginBranch(true)
+            buildOriginBranchWithPR(false)
+            buildOriginPRMerge(true)
+            buildForkPRMerge(false)
+            buildForkPRHead(false)
+          }
+        }
+        triggers {
+          periodicFolderTrigger {
+            interval('1m')
+          }
+        }
+        orphanedItemStrategy {
+          discardOldItems {
+            numToKeep(10)
+          }
+        }
+        factory {
+          workflowBranchProjectFactory {
+            scriptPath('Jenkinsfile')
+          }
+        }
+      }

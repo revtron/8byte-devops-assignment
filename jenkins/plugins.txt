@@ -1,0 +1,18 @@
+# Jenkins plugins installed by scripts/bootstrap/management.sh with jenkins-plugin-cli.
+# Format: name:version | name:latest. "latest" resolves against the update centre
+# matching the installed LTS war, so it is the newest compatible release.
+configuration-as-code:latest
+job-dsl:latest
+workflow-aggregator:latest
+pipeline-stage-view:latest
+git:latest
+github:latest
+github-branch-source:latest
+credentials:latest
+credentials-binding:latest
+junit:latest
+htmlpublisher:latest
+timestamper:latest
+ansicolor:latest
+matrix-auth:latest
+ws-cleanup:latest
