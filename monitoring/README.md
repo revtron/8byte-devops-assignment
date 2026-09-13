@@ -65,6 +65,11 @@ Secrets Manager and `/etc/8byte/env`:
 | `PG_EXPORTER_DSN` | `8byte/db` -> `postgresql://user:pass@host:5432/todo_prod?sslmode=require` (user/password URL-encoded) |
 | `SNS_TOPIC_ARN`, `AWS_REGION` | `/etc/8byte/env` |
 
+Grafana only reads `GF_SECURITY_ADMIN_PASSWORD` on its very first start (the
+password then lives in Grafana's own database). If `mon.sh` ran before
+`put-secrets.sh`, set the real password afterwards with
+`docker compose -f /opt/8byte/repo/monitoring/docker-compose.yml exec grafana grafana cli admin reset-admin-password '<jenkins admin password>'`.
+
 `alertmanager/alertmanager.yml` is rendered from `alertmanager.yml.tpl` with
 `envsubst` (only `${SNS_TOPIC_ARN}` and `${AWS_REGION}` are substituted). Both
 generated files are gitignored. `.env.example` documents the variables for a
