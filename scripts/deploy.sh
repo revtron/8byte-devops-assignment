@@ -6,7 +6,7 @@
 # `aws ssm send-command` (scripts/ssm-deploy.sh), or by hand for a rollback:
 #     sudo /opt/todo/deploy.sh prod <previous-tag>
 #
-# Contract (see .superpowers/sdd/tracks/contracts.md, "Deploy contract"):
+# Contract (see docs/CONTRACTS.md, "Deploy contract"):
 #   - pulls $DOCKERHUB_REPO:<tag>
 #   - replaces container todo-<env>; prod -> host port 3000, staging -> 3001,
 #     container port 3000

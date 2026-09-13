@@ -1,6 +1,6 @@
 # Prometheus configuration for the 8byte platform (runs on the mon host).
 #
-# Target IPs are FIXED BY CONTRACT (.superpowers/sdd/tracks/contracts.md):
+# Target IPs are FIXED BY CONTRACT (docs/CONTRACTS.md):
 #   backend = 10.0.10.10, mon = 10.0.10.20 (private subnet a, 10.0.10.0/24).
 # Terraform assigns these static private IPs, so there is no service discovery
 # and no dependency cycle between the hosts.
@@ -41,6 +41,9 @@ scrape_configs:
   # prod  -> host port 3000, staging -> host port 3001 (deploy contract).
   - job_name: todo-app
     metrics_path: /metrics
+    # The app's own `env` label matches this target label's value, so keep
+    # it instead of Prometheus renaming it to `exported_env`.
+    honor_labels: true
     static_configs:
       - targets: ["10.0.10.10:3000"]
         labels:

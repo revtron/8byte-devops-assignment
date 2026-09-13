@@ -4,7 +4,7 @@
 # (logged to /var/log/8byte-bootstrap.log). Safe to re-run at any time.
 #
 # What it does:
-#   1. sources /etc/8byte/env (written by user-data, see contracts.md)
+#   1. sources /etc/8byte/env (written by user-data, see docs/CONTRACTS.md)
 #   2. reads 8byte/db and 8byte/jenkins from Secrets Manager (instance role)
 #   3. writes monitoring/.env (postgres_exporter DSN, Grafana admin password,
 #      SNS topic, region)
@@ -94,18 +94,8 @@ compose_quote() {
 }
 
 grafana_pass="$(jq -r '.admin_password // empty' <<<"$jenkins_json")"
-if [[ -n "$grafana_pass" && "$grafana_pass" != "changeme" ]]; then
-  grafana_quoted="$(compose_quote "$grafana_pass")"
-elif [[ -f "$DOTENV" ]] && grep -q '^GRAFANA_ADMIN_PASSWORD=' "$DOTENV"; then
-  # put-secrets.sh has not run yet: keep whatever this script generated last time.
-  grafana_quoted="$(sed -n 's/^GRAFANA_ADMIN_PASSWORD=//p' "$DOTENV" | head -n1)"
-  log "WARNING: $JENKINS_SECRET_ID has no admin_password yet; keeping the existing Grafana password from $DOTENV"
-else
-  # Never start Grafana with a well-known default. Re-running this script after
-  # put-secrets.sh replaces it with the Jenkins admin password.
-  grafana_quoted="$(compose_quote "$(head -c 24 /dev/urandom | base64 | tr -d '/+=' | head -c 20)")"
-  log "WARNING: $JENKINS_SECRET_ID has no admin_password yet; generated a temporary Grafana password (see $DOTENV)"
-fi
+[[ -n "$grafana_pass" ]] || die "secret $JENKINS_SECRET_ID has no admin_password (Terraform generates it before hosts boot; this should not happen)"
+grafana_quoted="$(compose_quote "$grafana_pass")"
 
 # --- 3. monitoring/.env -----------------------------------------------------
 dotenv_content="$(cat <<DOTENV

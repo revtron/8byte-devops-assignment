@@ -145,16 +145,16 @@ log "installed $CASC_DIR/jenkins.yaml"
 # --- secrets -> systemd environment ------------------------------------------------------
 get_secret() { aws secretsmanager get-secret-value --region "$AWS_REGION" --secret-id "$1" --query SecretString --output text; }
 log "fetching secrets $DOCKERHUB_SECRET_ID, $GITHUB_SECRET_ID, $JENKINS_SECRET_ID"
-DOCKERHUB_JSON="$(get_secret "$DOCKERHUB_SECRET_ID")"
-GITHUB_JSON="$(get_secret "$GITHUB_SECRET_ID")"
+DOCKERHUB_JSON="$(get_secret "$DOCKERHUB_SECRET_ID" 2>/dev/null || echo '{}')"
+GITHUB_JSON="$(get_secret "$GITHUB_SECRET_ID" 2>/dev/null || echo '{}')"
 JENKINS_JSON="$(get_secret "$JENKINS_SECRET_ID")"
 DOCKERHUB_USERNAME="$(jq -r '.username // empty' <<<"$DOCKERHUB_JSON")"
 DOCKERHUB_TOKEN="$(jq -r '.token // empty' <<<"$DOCKERHUB_JSON")"
 GITHUB_TOKEN="$(jq -r '.token // empty' <<<"$GITHUB_JSON")"
 JENKINS_ADMIN_PASSWORD="$(jq -r '.admin_password // empty' <<<"$JENKINS_JSON")"
-[[ -n "$JENKINS_ADMIN_PASSWORD" ]] || { echo "error: $JENKINS_SECRET_ID has no admin_password (run scripts/put-secrets.sh)" >&2; exit 1; }
-[[ -n "$DOCKERHUB_USERNAME" && -n "$DOCKERHUB_TOKEN" ]] || log "WARNING: $DOCKERHUB_SECRET_ID incomplete — image push will fail until scripts/put-secrets.sh is run"
-[[ -n "$GITHUB_TOKEN" ]] || log "WARNING: $GITHUB_SECRET_ID has no token — GitHub scanning/commit statuses will be unauthenticated"
+[[ -n "$JENKINS_ADMIN_PASSWORD" ]] || { echo "error: $JENKINS_SECRET_ID has no admin_password (Terraform generates it; re-run the bootstrap)" >&2; exit 1; }
+[[ -n "$DOCKERHUB_USERNAME" && -n "$DOCKERHUB_TOKEN" ]] || log "WARNING: $DOCKERHUB_SECRET_ID incomplete — image push will fail until scripts/put-secrets.sh is run, then re-run this bootstrap"
+[[ -n "$GITHUB_TOKEN" ]] || log "WARNING: $GITHUB_SECRET_ID has no token — GitHub scanning/commit statuses will be unauthenticated until scripts/put-secrets.sh is run, then re-run this bootstrap"
 
 # systemd Environment= value: quoted, with % (specifier), \ and " escaped.
 sd_env() {

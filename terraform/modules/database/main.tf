@@ -57,6 +57,10 @@ resource "aws_db_instance" "this" {
   auto_minor_version_upgrade   = true
   performance_insights_enabled = false
 
+  # Ship slow-query (and other postgres) logs to CloudWatch (see the
+  # log_min_duration_statement parameter above).
+  enabled_cloudwatch_logs_exports = ["postgresql"]
+
   # Disposable demo: no final snapshot and no deletion guard so `destroy` is
   # one step. For a real environment set skip_final_snapshot = false and
   # deletion_protection = true.
