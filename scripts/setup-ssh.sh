@@ -31,7 +31,7 @@ replace_block() {
   fi
   [ -s "$tmp" ] && printf '\n' >> "$tmp"
   printf '%s\n%s\n%s\n' "$BEGIN" "$content" "$END" >> "$tmp"
-  mv "$tmp" "$file"
+  cat "$tmp" > "$file" && rm -f "$tmp"
 }
 
 echo "Reading ssh_config output from terraform/ ..."
