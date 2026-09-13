@@ -3,6 +3,7 @@
 *.csv
 claude_accessKeys*
 !docs/**/*.txt
+!jenkins/plugins.txt
 *.pem
 *.key
 .env
