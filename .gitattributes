@@ -1,0 +1,6 @@
+# Scripts run on Linux hosts and must never get CRLF, whatever core.autocrlf says.
+*.sh        text eol=lf
+Jenkinsfile text eol=lf
+*.yaml      text eol=lf
+*.yml       text eol=lf
+*.tftpl     text eol=lf
