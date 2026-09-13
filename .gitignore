@@ -29,3 +29,6 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 *.pdf
+
+# --- monitoring (rendered on the mon host by scripts/bootstrap/mon.sh) ---
+monitoring/alertmanager/alertmanager.yml

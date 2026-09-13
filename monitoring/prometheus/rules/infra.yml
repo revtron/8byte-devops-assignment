@@ -1,0 +1,49 @@
+# Host / target alerts (spec section 7.4). node_exporter 1.8 metric names.
+groups:
+  - name: infra
+    rules:
+      - alert: InstanceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Target {{ $labels.job }}/{{ $labels.instance }} is down"
+          description: "Prometheus has not been able to scrape {{ $labels.instance }} (job={{ $labels.job }}) for 2 minutes."
+
+      - alert: DiskAlmostFull
+        expr: |
+          (
+            1 - node_filesystem_avail_bytes{job="node", mountpoint="/", fstype!~"tmpfs|overlay"}
+                / node_filesystem_size_bytes{job="node", mountpoint="/", fstype!~"tmpfs|overlay"}
+          ) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Root filesystem almost full on {{ $labels.host }}"
+          description: "Root filesystem on {{ $labels.host }} ({{ $labels.instance }}) is {{ $value | printf \"%.1f\" }}% used (threshold 80%)."
+
+      - alert: HighMemory
+        expr: |
+          (
+            1 - node_memory_MemAvailable_bytes{job="node"} / node_memory_MemTotal_bytes{job="node"}
+          ) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.host }}"
+          description: "Memory usage on {{ $labels.host }} ({{ $labels.instance }}) is {{ $value | printf \"%.1f\" }}% (threshold 90%) for 5 minutes."
+
+      - alert: HighCpu
+        expr: |
+          (
+            1 - avg by (host, instance) (rate(node_cpu_seconds_total{job="node", mode="idle"}[5m]))
+          ) * 100 > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.host }}"
+          description: "CPU usage on {{ $labels.host }} ({{ $labels.instance }}) is {{ $value | printf \"%.1f\" }}% (threshold 90%) for 10 minutes."
