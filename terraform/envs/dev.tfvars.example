@@ -1,0 +1,19 @@
+# Copy to envs/dev.tfvars (gitignored) and fill in the values, then:
+#   terraform plan -var-file=envs/dev.tfvars
+admin_cidr       = "203.0.113.4/32"
+admin_public_key = "ssh-ed25519 AAAA... you@laptop"
+alert_email      = "you@example.com"
+dockerhub_repo   = "yourdockerhubuser/todo"
+github_repo      = "yourgithubuser/8byte"
+git_ref          = "main"
+
+# Optional overrides (defaults shown)
+# project              = "8byte"
+# env                  = "dev"
+# region               = "ap-south-1"
+# vpc_cidr             = "10.0.0.0/16"
+# azs                  = ["ap-south-1a", "ap-south-1b"]
+# instance_types       = { management = "t3.small", backend = "t3.micro", mon = "t3.small" }
+# db_instance_class    = "db.t4g.micro"
+# db_allocated_storage = 20
+# tags                 = { Owner = "you" }
