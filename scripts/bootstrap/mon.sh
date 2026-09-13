@@ -20,6 +20,8 @@ COMPOSE_FILE="${MON_DIR}/docker-compose.yml"
 DOTENV="${MON_DIR}/.env"
 AM_TPL="${MON_DIR}/alertmanager/alertmanager.yml.tpl"
 AM_CFG="${MON_DIR}/alertmanager/alertmanager.yml"
+STATE_DIR="/var/lib/8byte"
+PROM_STATE="${STATE_DIR}/mon-prometheus-config.sha256"   # hash of prometheus.yml + rules from the last run
 
 log()  { echo "[mon-bootstrap] $(date -u +%FT%TZ) $*"; }
 die()  { log "ERROR: $*" >&2; exit 1; }
@@ -130,13 +132,23 @@ chmod 0640 "$DOTENV"
 # --- 4. alertmanager config -------------------------------------------------
 [[ -f "$AM_TPL" ]] || die "$AM_TPL not found"
 rendered="$(SNS_TOPIC_ARN="$SNS_TOPIC_ARN" AWS_REGION="$AWS_REGION" envsubst '${SNS_TOPIC_ARN} ${AWS_REGION}' < "$AM_TPL")"
+am_changed=0
 if [[ ! -f "$AM_CFG" ]] || [[ "$(cat "$AM_CFG")" != "$rendered" ]]; then
   log "rendering $AM_CFG"
   printf '%s\n' "$rendered" > "$AM_CFG"
+  am_changed=1
 else
   log "$AM_CFG unchanged"
 fi
 chmod 0644 "$AM_CFG"
+
+# Detect Prometheus config/rule changes since the last run (for a SIGHUP reload later).
+mkdir -p "$STATE_DIR"
+prom_sha="$(cat "${MON_DIR}/prometheus/prometheus.yml" "${MON_DIR}"/prometheus/rules/*.yml | sha256sum | cut -d" " -f1)"
+prom_changed=0
+if [[ ! -f "$PROM_STATE" ]] || [[ "$(cat "$PROM_STATE")" != "$prom_sha" ]]; then
+  prom_changed=1
+fi
 
 # --- 5. host agents ---------------------------------------------------------
 log "installing node_exporter"
@@ -150,10 +162,6 @@ systemctl is-active --quiet docker || { log "starting docker"; systemctl start d
 log "docker compose up -d"
 docker compose -f "$COMPOSE_FILE" --env-file "$DOTENV" pull --quiet || log "WARNING: image pull had errors; continuing with local images"
 docker compose -f "$COMPOSE_FILE" --env-file "$DOTENV" up -d --remove-orphans
-
-# Alertmanager/Prometheus reload their config on SIGHUP; a re-run with changed
-# rules or alertmanager.yml should not need a full restart.
-docker compose -f "$COMPOSE_FILE" --env-file "$DOTENV" kill -s SIGHUP prometheus alertmanager >/dev/null 2>&1 || true
 
 wait_for() {
   local name="$1" url="$2" i
@@ -174,6 +182,25 @@ wait_for alertmanager http://127.0.0.1:9093/-/ready       || status=1
 wait_for loki         http://127.0.0.1:3100/ready         || status=1
 wait_for grafana      http://127.0.0.1:3000/api/health    || status=1
 wait_for pg_exporter  http://127.0.0.1:9187/metrics       || status=1
+
+# Prometheus/Alertmanager reload config on SIGHUP, so a re-run with changed rules
+# or alertmanager.yml does not need a container restart. Only signal when
+# something changed and the service is actually up.
+if [[ $prom_changed -eq 1 ]]; then
+  if docker compose -f "$COMPOSE_FILE" --env-file "$DOTENV" kill -s SIGHUP prometheus >/dev/null 2>&1; then
+    log "prometheus config/rules changed; sent SIGHUP"
+    printf '%s\n' "$prom_sha" > "$PROM_STATE"
+  else
+    log "WARNING: could not signal prometheus; will retry next run"
+  fi
+fi
+if [[ $am_changed -eq 1 ]]; then
+  if docker compose -f "$COMPOSE_FILE" --env-file "$DOTENV" kill -s SIGHUP alertmanager >/dev/null 2>&1; then
+    log "alertmanager config changed; sent SIGHUP"
+  else
+    log "WARNING: could not signal alertmanager"
+  fi
+fi
 
 docker compose -f "$COMPOSE_FILE" --env-file "$DOTENV" ps
 

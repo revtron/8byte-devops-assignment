@@ -155,9 +155,10 @@ Flow:
    `[8byte] FIRING:1 HighErrorRate`; body lists each alert's summary,
    description, labels and start time.
 
-`InstanceDown` inhibits the derived alerts (`HighErrorRate`, `HighLatency`,
-`HighMemory`, `HighCpu`, `DiskAlmostFull`) for the same `instance`, so a dead
-host produces one email rather than five.
+An inhibit rule suppresses `HighMemory`, `HighCpu` and `DiskAlmostFull` for a
+`host` whose node_exporter target is already `InstanceDown`, so a dead host
+does not also mail stale resource alerts. App alerts (`HighErrorRate`,
+`HighLatency`) are per `env`, not per host, and are not inhibited.
 
 To test end to end: `docker stop todo-staging` on backend; after ~2 m
 `InstanceDown` fires (Prometheus -> Alerts) and an email arrives; `docker start
@@ -178,14 +179,17 @@ promtail on each host ships two streams to Loki:
   `prod`/`staging` for the app, `monitoring` for the stack), `host`, and
   `level` extracted from the pino JSON line of the `todo-*` containers (numeric levels mapped to
   `info`/`warn`/`error`...). Nothing per-request becomes a label.
-- `job="system"`: `/var/log/messages`, `/var/log/secure`,
-  `/var/log/cloud-init-output.log`, `/var/log/8byte-bootstrap.log`, label `host`.
+- `job="system"`: the systemd journal (AL2023 has no rsyslog, so sshd, docker,
+  systemd, cloud-init all live there) with labels `host`, `unit`
+  (e.g. `sshd.service`) and `level` (journal priority keyword), plus the two
+  plain files `/var/log/cloud-init-output.log` and `/var/log/8byte-bootstrap.log`.
 
 Useful LogQL in Grafana Explore (datasource Loki):
 
 ```logql
 {container="todo-prod"} | json | res_statusCode >= 500
-{job="system", host="backend"} |= "sshd"
+{job="system", host="backend", unit="sshd.service"}
+{job="system", level=~"err|crit|alert|emerg"}
 sum by (level) (count_over_time({container=~"todo-.*"}[5m]))
 ```
 

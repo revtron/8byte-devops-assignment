@@ -59,6 +59,12 @@ scrape_configs:
     static_configs:
       - targets: ["loki:3100"]
 
+  # Grafana self-metrics.
+  - job_name: grafana
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["grafana:3000"]
+
   # Alertmanager self-metrics.
   - job_name: alertmanager
     static_configs:

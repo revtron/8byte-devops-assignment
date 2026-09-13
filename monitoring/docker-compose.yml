@@ -91,6 +91,9 @@ services:
     restart: unless-stopped
     environment:
       DATA_SOURCE_NAME: ${PG_EXPORTER_DSN}
+      # The database collector runs pg_database_size() on every DB; RDS denies
+      # that on its internal rdsadmin database, so skip it (and the templates).
+      PG_EXPORTER_EXCLUDE_DATABASES: rdsadmin,template0,template1
     ports:
       - "0.0.0.0:9187:9187"
     labels:

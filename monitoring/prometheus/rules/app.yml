@@ -1,6 +1,8 @@
 # Alerts for the todo application (spec section 7.4).
 # App metrics (contracts.md): http_requests_total{method,route,status,env},
 # http_request_duration_seconds histogram. Target-down alerts live in infra.yml (InstanceDown).
+# Severity scheme: critical = would page an on-call (service/host down, users affected);
+# warning = email only, look at it during working hours.
 groups:
   - name: todo-app
     rules:

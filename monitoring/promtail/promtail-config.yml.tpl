@@ -53,19 +53,28 @@ scrape_configs:
             - labels:
                 level:
 
-  # (b) Host system logs.
-  - job_name: system
+  # (b) Host system logs. Amazon Linux 2023 is journald-only (no rsyslog, so no
+  # /var/log/messages or /var/log/secure): sshd, systemd, docker, cloud-init,
+  # node_exporter and promtail itself all land in the journal.
+  # scripts/install-promtail.sh makes the journal persistent (/var/log/journal).
+  - job_name: journal
+    journal:
+      path: /var/log/journal
+      max_age: 12h
+      json: false
+      labels:
+        job: system
+        host: ${HOSTNAME_LABEL}
+    relabel_configs:
+      - source_labels: ["__journal__systemd_unit"]
+        target_label: unit
+      - source_labels: ["__journal_priority_keyword"]
+        target_label: level
+
+  # (c) The two files that are written directly (not via journald): cloud-init
+  # output and the repo bootstrap log.
+  - job_name: system-files
     static_configs:
-      - targets: ["localhost"]
-        labels:
-          job: system
-          host: ${HOSTNAME_LABEL}
-          __path__: /var/log/messages
-      - targets: ["localhost"]
-        labels:
-          job: system
-          host: ${HOSTNAME_LABEL}
-          __path__: /var/log/secure
       - targets: ["localhost"]
         labels:
           job: system

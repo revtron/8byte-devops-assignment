@@ -60,6 +60,19 @@ else
   log "installed ${BIN}"
 fi
 
+# --- persistent journal -----------------------------------------------------
+# AL2023 is journald-only and journald stores logs in volatile /run/log/journal
+# unless /var/log/journal exists. The promtail `journal` scrape reads from
+# /var/log/journal, so make it persistent once (journald picks the directory up
+# on restart; existing runtime logs are flushed into it).
+if [[ ! -d /var/log/journal ]]; then
+  log "enabling persistent systemd journal (/var/log/journal)"
+  mkdir -p /var/log/journal
+  systemd-tmpfiles --create --prefix /var/log/journal >/dev/null 2>&1 || true
+  systemctl restart systemd-journald
+  journalctl --flush >/dev/null 2>&1 || true
+fi
+
 # --- config -----------------------------------------------------------------
 mkdir -p "$CONFIG_DIR" "$POSITIONS_DIR"
 # Only the two placeholders are substituted; promtail's own {{ }} templates are untouched.

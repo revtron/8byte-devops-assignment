@@ -35,7 +35,8 @@ receivers:
           {{ end }}
 
 inhibit_rules:
-  # When a scrape target is down, suppress derived alerts for the same instance.
+  # When a host is down (node_exporter target), suppress the resource alerts
+  # that carry the same host label. App alerts are per env and unaffected.
   - source_matchers: ["alertname = InstanceDown"]
     target_matchers: ["alertname =~ HighErrorRate|HighLatency|HighMemory|HighCpu|DiskAlmostFull"]
-    equal: ["instance"]
+    equal: ["host"]
