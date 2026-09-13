@@ -1,5 +1,7 @@
-# Access-log bucket. ALB access logging in ap-south-1 is performed by the
-# regional AWS ELB account, which needs PutObject on the prefix.
+# Access-log bucket. ALB access logs are written by the regional AWS-owned
+# ELB account (718504428378 in ap-south-1), which needs PutObject on the prefix.
+
+data "aws_elb_service_account" "this" {}
 
 resource "aws_s3_bucket" "logs" {
   bucket = "${var.project}-alb-logs-${var.account_id}"
@@ -50,7 +52,7 @@ data "aws_iam_policy_document" "logs" {
 
     principals {
       type        = "AWS"
-      identifiers = ["arn:aws:iam::${var.elb_account_id}:root"]
+      identifiers = [data.aws_elb_service_account.this.arn]
     }
   }
 }

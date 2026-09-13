@@ -26,12 +26,6 @@ variable "account_id" {
   type        = string
 }
 
-variable "elb_account_id" {
-  description = "AWS-owned ELB account that writes access logs in this region (ap-south-1)."
-  type        = string
-  default     = "718504428378"
-}
-
 variable "log_retention_days" {
   type    = number
   default = 30

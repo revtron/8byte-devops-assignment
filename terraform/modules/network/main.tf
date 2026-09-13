@@ -1,3 +1,10 @@
+locals {
+  # /24s carved from the VPC: public 10.0.0.0/24, 10.0.1.0/24; private
+  # 10.0.10.0/24, 10.0.11.0/24 for the default 10.0.0.0/16.
+  public_subnet_cidrs  = [for i in range(length(var.azs)) : cidrsubnet(var.vpc_cidr, 8, i)]
+  private_subnet_cidrs = [for i in range(length(var.azs)) : cidrsubnet(var.vpc_cidr, 8, 10 + i)]
+}
+
 resource "aws_vpc" "this" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
@@ -16,7 +23,7 @@ resource "aws_subnet" "public" {
   count = length(var.azs)
 
   vpc_id                  = aws_vpc.this.id
-  cidr_block              = var.public_subnet_cidrs[count.index]
+  cidr_block              = local.public_subnet_cidrs[count.index]
   availability_zone       = var.azs[count.index]
   map_public_ip_on_launch = false
 
@@ -30,7 +37,7 @@ resource "aws_subnet" "private" {
   count = length(var.azs)
 
   vpc_id            = aws_vpc.this.id
-  cidr_block        = var.private_subnet_cidrs[count.index]
+  cidr_block        = local.private_subnet_cidrs[count.index]
   availability_zone = var.azs[count.index]
 
   tags = {

@@ -20,10 +20,6 @@ resource "aws_security_group" "this" {
   vpc_id      = var.vpc_id
 
   tags = { Name = "${var.project}-${each.key}" }
-
-  lifecycle {
-    create_before_destroy = true
-  }
 }
 
 resource "aws_vpc_security_group_egress_rule" "all" {

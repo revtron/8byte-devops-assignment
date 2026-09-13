@@ -16,20 +16,24 @@ REGION="${AWS_REGION:-${AWS_DEFAULT_REGION:-ap-south-1}}"
 command -v aws >/dev/null || { echo "aws cli not found" >&2; exit 1; }
 command -v jq >/dev/null || { echo "jq not found" >&2; exit 1; }
 
-# prompt_if_unset <VAR> <label>
+# prompt_if_unset <VAR> <label> [optional]: silent prompt when the env var is
+# unset; empty is rejected unless the third argument is "optional".
 prompt_if_unset() {
-  local var="$1" label="$2"
+  local var="$1" label="$2" mode="${3:-required}"
   if [ -z "${!var:-}" ]; then
     read -r -s -p "$label: " "$var"
     printf '\n' >&2
     export "$var"
   fi
-  [ -n "${!var}" ] || { echo "$var must not be empty" >&2; exit 1; }
+  if [ "$mode" != optional ] && [ -z "${!var}" ]; then
+    echo "$var must not be empty" >&2
+    exit 1
+  fi
 }
 
 prompt_if_unset DOCKERHUB_USERNAME "Docker Hub username"
 prompt_if_unset DOCKERHUB_TOKEN "Docker Hub access token"
-prompt_if_unset GITHUB_TOKEN "GitHub PAT (repo scope; empty not allowed)"
+prompt_if_unset GITHUB_TOKEN "GitHub PAT (repo scope; leave empty for a public repo)" optional
 prompt_if_unset JENKINS_ADMIN_PASSWORD "Jenkins admin password"
 
 # put <secret name> <json>

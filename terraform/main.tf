@@ -86,4 +86,8 @@ module "compute" {
   sns_topic_arn = module.notifications.topic_arn
   alb_dns_name  = module.alb.alb_dns_name
   templates_dir = "${path.module}/templates"
+
+  # cloud-init on the private hosts needs the NAT route to exist, not just
+  # the subnet; instances would otherwise race the NAT gateway and fail dnf.
+  depends_on = [module.network]
 }
