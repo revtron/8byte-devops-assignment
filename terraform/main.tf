@@ -87,7 +87,10 @@ module "compute" {
   alb_dns_name  = module.alb.alb_dns_name
   templates_dir = "${path.module}/templates"
 
-  # cloud-init on the private hosts needs the NAT route to exist, not just
-  # the subnet; instances would otherwise race the NAT gateway and fail dnf.
-  depends_on = [module.network]
+  # Instances must not boot before (a) the NAT route exists, otherwise
+  # cloud-init races the NAT gateway and dnf fails, and (b) the 8byte/db and
+  # 8byte/jenkins secret *versions* exist. The module inputs only reference
+  # the secret containers, and the db version waits on RDS, so without this
+  # backend/mon would run their bootstrap scripts against an empty secret.
+  depends_on = [module.network, module.secrets]
 }

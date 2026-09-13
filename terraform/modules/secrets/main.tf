@@ -1,12 +1,12 @@
-# Four secrets. Only 8byte/db gets a value from Terraform; the other three are
-# empty containers filled by scripts/put-secrets.sh so those values never
-# enter Terraform state.
+# Four secrets. 8byte/db and 8byte/jenkins get generated values from
+# Terraform so hosts can boot without manual steps; 8byte/dockerhub and
+# 8byte/github are empty containers filled by scripts/put-secrets.sh so
+# those user-owned values never enter Terraform state.
 
 locals {
   placeholders = {
     dockerhub = "Docker Hub credentials {username, token}"
     github    = "GitHub PAT {token}"
-    jenkins   = "Jenkins admin credentials {admin_password}"
   }
 }
 
@@ -23,6 +23,8 @@ resource "aws_secretsmanager_secret" "db" {
 
 resource "aws_secretsmanager_secret_version" "db" {
   secret_id = aws_secretsmanager_secret.db.id
+  # port is emitted as a JSON number (5432), not a string; consumers using
+  # jq -r get "5432" either way.
   secret_string = jsonencode({
     host           = var.db_host
     port           = var.db_port
@@ -41,4 +43,25 @@ resource "aws_secretsmanager_secret" "placeholder" {
   recovery_window_in_days = 0
 
   tags = { Name = "${var.project}/${each.key}" }
+}
+
+resource "random_password" "jenkins_admin" {
+  length           = 20
+  special          = true
+  override_special = "_-"
+}
+
+resource "aws_secretsmanager_secret" "jenkins" {
+  name                    = "${var.project}/jenkins"
+  description             = "Jenkins admin credentials {admin_password}; also reused as the Grafana admin password"
+  recovery_window_in_days = 0
+
+  tags = { Name = "${var.project}/jenkins" }
+}
+
+resource "aws_secretsmanager_secret_version" "jenkins" {
+  secret_id = aws_secretsmanager_secret.jenkins.id
+  secret_string = jsonencode({
+    admin_password = random_password.jenkins_admin.result
+  })
 }

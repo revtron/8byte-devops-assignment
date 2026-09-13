@@ -55,7 +55,7 @@ variable "admin_cidr" {
   type        = string
 
   validation {
-    condition     = can(cidrnetmask(var.admin_cidr)) && strcontains(var.admin_cidr, "/")
+    condition     = can(cidrnetmask(var.admin_cidr))
     error_message = "admin_cidr must be an IPv4 CIDR with a prefix length, e.g. 203.0.113.4/32."
   }
 }

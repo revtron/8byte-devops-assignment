@@ -15,13 +15,16 @@ output "github_secret_arn" {
 }
 
 output "jenkins_secret_arn" {
-  value = aws_secretsmanager_secret.placeholder["jenkins"].arn
+  value = aws_secretsmanager_secret.jenkins.arn
 }
 
 output "secret_names" {
   description = "key => secret name, for the host env file."
   value = merge(
-    { db = aws_secretsmanager_secret.db.name },
+    {
+      db      = aws_secretsmanager_secret.db.name
+      jenkins = aws_secretsmanager_secret.jenkins.name
+    },
     { for k, s in aws_secretsmanager_secret.placeholder : k => s.name },
   )
 }

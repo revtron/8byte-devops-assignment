@@ -44,6 +44,9 @@ resource "aws_instance" "backend" {
   metadata_options {
     http_endpoint = "enabled"
     http_tokens   = "required"
+    # Containers (Alertmanager, postgres_exporter, Jenkins jobs) reach IMDS
+    # through the docker bridge, which costs one extra hop.
+    http_put_response_hop_limit = 2
   }
 
   root_block_device {
@@ -80,6 +83,9 @@ resource "aws_instance" "mon" {
   metadata_options {
     http_endpoint = "enabled"
     http_tokens   = "required"
+    # Containers (Alertmanager, postgres_exporter, Jenkins jobs) reach IMDS
+    # through the docker bridge, which costs one extra hop.
+    http_put_response_hop_limit = 2
   }
 
   root_block_device {
@@ -118,6 +124,9 @@ resource "aws_instance" "management" {
   metadata_options {
     http_endpoint = "enabled"
     http_tokens   = "required"
+    # Containers (Alertmanager, postgres_exporter, Jenkins jobs) reach IMDS
+    # through the docker bridge, which costs one extra hop.
+    http_put_response_hop_limit = 2
   }
 
   root_block_device {

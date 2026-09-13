@@ -45,7 +45,8 @@ usermod -aG docker "$ROLE"
 PLUGIN_DIR=/usr/local/lib/docker/cli-plugins
 install -d -m 755 "$PLUGIN_DIR"
 if ! docker compose version >/dev/null 2>&1; then
-  curl -fsSL "https://github.com/docker/compose/releases/download/v$COMPOSE_VERSION/docker-compose-linux-x86_64" \
+  curl -fsSL --retry 5 --retry-all-errors --retry-delay 3 \
+    "https://github.com/docker/compose/releases/download/v$COMPOSE_VERSION/docker-compose-linux-x86_64" \
     -o "$PLUGIN_DIR/docker-compose"
   chmod 755 "$PLUGIN_DIR/docker-compose"
 fi
@@ -76,6 +77,9 @@ chown root:docker "$ENV_FILE"
 chmod 0640 "$ENV_FILE"
 
 # --- 4. clone the repo -------------------------------------------------------------
+# Only 8byte/github is read here; a missing value (container without a
+# version) is treated as "public repo". 8byte/dockerhub is never read by this
+# script - management.sh fetches it itself and copes with it being empty.
 # The token (if any) must not appear in this log or in .git/config.
 set +x
 GITHUB_TOKEN="$(aws secretsmanager get-secret-value \

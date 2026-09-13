@@ -12,8 +12,9 @@ resource "aws_db_subnet_group" "this" {
   tags = { Name = "${var.project}-db" }
 }
 
+# RDS identifiers must start with a letter, hence the prefix-first names.
 resource "aws_db_parameter_group" "this" {
-  name        = "${var.project}-postgres16"
+  name        = "pg16-${var.project}"
   family      = "postgres16"
   description = "${var.project} PostgreSQL 16 parameters"
 
@@ -27,7 +28,7 @@ resource "aws_db_parameter_group" "this" {
 }
 
 resource "aws_db_instance" "this" {
-  identifier = "${var.project}-db"
+  identifier = "db-${var.project}"
 
   engine                = "postgres"
   engine_version        = var.engine_version

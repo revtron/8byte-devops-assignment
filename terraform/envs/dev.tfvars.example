@@ -1,5 +1,11 @@
-# Copy to envs/dev.tfvars (gitignored) and fill in the values, then:
-#   terraform plan -var-file=envs/dev.tfvars
+# Copy to envs/dev.tfvars (gitignored) and fill in the values.
+#
+# Required order on a fresh account (the hosts read Secrets Manager at boot):
+#   1. cd terraform/bootstrap && terraform apply
+#   2. cd terraform && terraform init -backend-config=backend.hcl
+#   3. terraform apply -var-file=envs/dev.tfvars -target=module.secrets
+#   4. ../scripts/put-secrets.sh          # writes 8byte/dockerhub and 8byte/github
+#   5. terraform apply -var-file=envs/dev.tfvars
 admin_cidr       = "203.0.113.4/32"
 admin_public_key = "ssh-ed25519 AAAA... you@laptop"
 alert_email      = "you@example.com"
