@@ -1,0 +1,34 @@
+# Alerts for the todo application (spec section 7.4).
+# App metrics (contracts.md): http_requests_total{method,route,status,env},
+# http_request_duration_seconds histogram. Target-down alerts live in infra.yml (InstanceDown).
+# Severity scheme: critical = would page an on-call (service/host down, users affected);
+# warning = email only, look at it during working hours.
+groups:
+  - name: todo-app
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum by (env) (rate(http_requests_total{job="todo-app", status=~"5.."}[5m]))
+            /
+            sum by (env) (rate(http_requests_total{job="todo-app"}[5m]))
+          ) * 100 > 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High 5xx rate on todo-app {{ $labels.env }}"
+          description: "{{ $value | printf \"%.2f\" }}% of requests to todo-app env={{ $labels.env }} returned 5xx over the last 5 minutes (threshold 5%)."
+
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (env, le) (rate(http_request_duration_seconds_bucket{job="todo-app"}[5m]))
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High p95 latency on todo-app {{ $labels.env }}"
+          description: "p95 request latency for todo-app env={{ $labels.env }} is {{ $value | printf \"%.2f\" }}s (threshold 1s) for 5 minutes."

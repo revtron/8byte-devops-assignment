@@ -1,8 +1,17 @@
+# Files that are executed or rendered on Linux must stay LF even when checked
+# out on Windows with core.autocrlf=true (shell scripts, cloud-init template,
+# Jenkinsfile, YAML/HCL configs). PowerShell keeps CRLF.
 * text=auto eol=lf
-*.sh text eol=lf
-*.tftpl text eol=lf
+*.sh        text eol=lf
+*.tftpl     text eol=lf
+*.tpl       text eol=lf
+*.tf        text eol=lf
+*.hcl       text eol=lf
+*.example   text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
 Jenkinsfile text eol=lf
-*.ps1 text eol=crlf
+*.ps1       text eol=crlf
 *.png binary
 *.jpg binary
 *.pdf binary

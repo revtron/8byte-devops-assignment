@@ -1,8 +1,9 @@
 # --- secrets: never commit ---
 *.txt
+!jenkins/plugins.txt
+!docs/**/*.txt
 *.csv
 claude_accessKeys*
-!docs/**/*.txt
 *.pem
 *.key
 .env
@@ -10,11 +11,10 @@ claude_accessKeys*
 !.env.example
 terraform/**/*.tfvars
 !terraform/**/*.example.tfvars
-!terraform/envs/*.tfvars
+terraform/backend.hcl
 
 # --- terraform ---
 .terraform/
-.terraform.lock.hcl
 *.tfstate
 *.tfstate.*
 *.tfplan
@@ -25,10 +25,14 @@ node_modules/
 coverage/
 npm-debug.log*
 
+# --- test reports ---
+app/reports/
+
+# --- monitoring (rendered on the mon host by scripts/bootstrap/mon.sh) ---
+monitoring/alertmanager/alertmanager.yml
+
 # --- misc ---
 .DS_Store
 Thumbs.db
 *.pdf
-
-# --- test reports ---
-app/reports/
+.superpowers/
