@@ -10,7 +10,8 @@ claude_accessKeys*
 !.env.example
 terraform/**/*.tfvars
 !terraform/**/*.example.tfvars
-!terraform/envs/*.tfvars
+!terraform/envs/*.tfvars.example
+terraform/backend.hcl
 
 # --- terraform ---
 .terraform/
