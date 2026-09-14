@@ -38,6 +38,14 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '20'))
     }
 
+    parameters {
+        // Default: promote to production automatically once staging is
+        // healthy. Untick on "Build with Parameters" to get the manual
+        // "Approve production" prompt back (e.g. for a demo).
+        booleanParam(name: 'AUTO_APPROVE_PROD', defaultValue: true,
+                     description: 'Deploy to production without waiting for a manual approval')
+    }
+
     stages {
 
         stage('Checkout') {
@@ -212,8 +220,17 @@ pipeline {
                 timeout(time: 30, unit: 'MINUTES')
             }
             steps {
-                input message: "Promote ${env.GIT_SHA} to production?", ok: 'Deploy'
-                echo "approved ${env.GIT_SHA}"
+                script {
+                    // params is empty on the very first build after a
+                    // parameters block is added; treat "unknown" as auto.
+                    def auto = (params.AUTO_APPROVE_PROD == null) ? true : params.AUTO_APPROVE_PROD
+                    if (auto) {
+                        echo "AUTO_APPROVE_PROD=true — promoting ${env.GIT_SHA} without a manual gate"
+                    } else {
+                        input message: "Promote ${env.GIT_SHA} to production?", ok: 'Deploy'
+                        echo "approved ${env.GIT_SHA}"
+                    }
+                }
             }
             post { failure { markStageFailed() } }
         }
