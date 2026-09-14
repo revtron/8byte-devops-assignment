@@ -186,11 +186,10 @@ aws secretsmanager get-secret-value --secret-id 8byte/jenkins \
 ```
 
 The `todo` multibranch job scans the repo within a minute and builds `main`.
-Watch it go through tests, scans, image build/push, the staging deploy and
-its smoke test; the same image tag is then promoted to prod and smoke-tested.
-Production promotion is automatic by default (`AUTO_APPROVE_PROD=true`); to
-see the manual gate, run *Build with Parameters* with it unticked and the
-build pauses at **Approve production** until you click *Deploy*.
+Watch it go through tests, scans, image build/push and the staging deploy;
+at **Approve production** click *Deploy*. The same image tag is then promoted
+to prod and smoke-tested. (For an unattended run, *Build with Parameters*
+with `AUTO_APPROVE_PROD` ticked skips the prompt.)
 
 **9. Use the app.**
 
@@ -238,7 +237,7 @@ run only on `main`.
 | 9 | Push image | `main` | `docker login` with the `dockerhub` credential (`--password-stdin`), push both tags |
 | 10 | Deploy staging | `main` | [`scripts/ssm-deploy.sh staging <sha>`](scripts/ssm-deploy.sh) → SSM Run Command → `/opt/todo/deploy.sh staging <sha>` on backend |
 | 11 | Smoke test staging | `main` | [`scripts/smoke-test.sh`](scripts/smoke-test.sh) against `http://$ALB_DNS:8080`: `/health` `db: ok`, POST/GET/DELETE round-trip |
-| 12 | Approve production | `main` | auto by default (`AUTO_APPROVE_PROD` build parameter); when unticked, `input` "Promote `<sha>` to production?" with a 30-minute timeout |
+| 12 | Approve production | `main` | `input` "Promote `<sha>` to production?", 30-minute timeout; skipped when the `AUTO_APPROVE_PROD` build parameter is ticked (default off) |
 | 13 | Deploy production | `main` | same SSM call with `prod` and the **same tag** — the image is promoted, never rebuilt |
 | 14 | Smoke test production | `main` | smoke test against `http://$ALB_DNS` |
 

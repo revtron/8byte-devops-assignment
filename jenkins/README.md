@@ -106,15 +106,14 @@ results are recorded after the unit and integration stages.
 
 ### The approval step
 
-`Approve production` is governed by the `AUTO_APPROVE_PROD` build parameter
-(default **true**): a green staging smoke test promotes the same image to
-production without waiting. Untick it on *Build with Parameters* and the
-stage runs an `input` step instead: the build pauses with "Promote `<sha>`
-to production?" and a **Deploy** button. Anyone logged in can approve
-(authorization strategy is deliberately simple). The prompt times out after
-30 minutes and the build is then marked aborted. While waiting, the stage
-holds an executor; with two executors and one job this is acceptable for the
-demo.
+`Approve production` runs an `input` step: the build pauses with "Promote
+`<sha>` to production?" and a **Deploy** button. Anyone logged in can
+approve (authorization strategy is deliberately simple). The prompt times
+out after 30 minutes and the build is then marked aborted — nothing reaches
+prod without a click. While waiting, the stage holds an executor; with two
+executors and one job this is acceptable for the demo. For an unattended
+run, *Build with Parameters* with `AUTO_APPROVE_PROD` ticked (default off)
+skips the prompt once the staging smoke test is green.
 
 ## Webhook upgrade path
 

@@ -39,10 +39,10 @@ pipeline {
     }
 
     parameters {
-        // Default: promote to production automatically once staging is
-        // healthy. Untick on "Build with Parameters" to get the manual
-        // "Approve production" prompt back (e.g. for a demo).
-        booleanParam(name: 'AUTO_APPROVE_PROD', defaultValue: true,
+        // Default: a human approves every production promotion. Tick on
+        // "Build with Parameters" to promote automatically once staging is
+        // healthy (e.g. for an unattended run).
+        booleanParam(name: 'AUTO_APPROVE_PROD', defaultValue: false,
                      description: 'Deploy to production without waiting for a manual approval')
     }
 
@@ -222,9 +222,8 @@ pipeline {
             steps {
                 script {
                     // params is empty on the very first build after a
-                    // parameters block is added; treat "unknown" as auto.
-                    def auto = (params.AUTO_APPROVE_PROD == null) ? true : params.AUTO_APPROVE_PROD
-                    if (auto) {
+                    // parameters block is added; unknown means manual.
+                    if (params.AUTO_APPROVE_PROD == true) {
                         echo "AUTO_APPROVE_PROD=true — promoting ${env.GIT_SHA} without a manual gate"
                     } else {
                         input message: "Promote ${env.GIT_SHA} to production?", ok: 'Deploy'
