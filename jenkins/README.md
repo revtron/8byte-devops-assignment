@@ -9,7 +9,7 @@ this directory. There is no click-ops: if it is not in `jenkins.yaml`,
 | `jenkins.yaml` | JCasC: admin user, authorization, global env vars, credentials, the `todo` multibranch job (Job DSL) |
 | `plugins.txt` | plugin list installed with `jenkins-plugin-cli` at bootstrap |
 | `../Jenkinsfile` | the pipeline (14 stages, see below) |
-| `../scripts/bootstrap/management.sh` | installs Java 17, Jenkins, Node 20, Trivy, plugins; writes JCasC + systemd env; starts Jenkins |
+| `../scripts/bootstrap/management.sh` | installs Java 21, Jenkins, Node 20, Trivy, plugins; writes JCasC + systemd env; starts Jenkins |
 | `../scripts/ssm-deploy.sh` | used by the pipeline: SSM Run Command to the backend + wait |
 | `../scripts/deploy.sh` | runs **on the backend** as `/opt/todo/deploy.sh <env> <tag>` |
 | `../scripts/smoke-test.sh` | post-deploy health + CRUD check against the ALB |

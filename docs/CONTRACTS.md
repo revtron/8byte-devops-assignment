@@ -47,7 +47,7 @@ BACKEND_INSTANCE_ID=<id>          # management only
 The bootstrap scripts are owned by other tracks:
 - `scripts/bootstrap/backend.sh` — jenkins track. Installs node_exporter (systemd, :9100), promtail (systemd, config from `monitoring/promtail/promtail-config.yml` with `${MON_PRIVATE_IP}` substituted via envsubst), installs `psql` client, creates databases `todo_prod` and `todo_staging` on RDS if missing (creds from `8byte/db`), copies `scripts/deploy.sh` to `/opt/todo/deploy.sh`, and runs `deploy.sh prod latest` and `deploy.sh staging latest` (tolerate failure if the image doesn't exist yet).
 - `scripts/bootstrap/mon.sh` — monitoring track. Renders `monitoring/.env` (DB creds from `8byte/db`, SNS arn, backend IP, Grafana admin password = jenkins admin password from `8byte/jenkins` for simplicity) and `docker compose -f /opt/8byte/repo/monitoring/docker-compose.yml up -d`. Also installs node_exporter + promtail on mon itself.
-- `scripts/bootstrap/management.sh` — jenkins track. Installs Java 17, Jenkins LTS, Trivy, Node 20, plugins from `jenkins/plugins.txt`, JCasC from `jenkins/jenkins.yaml`, systemd env from secrets; starts Jenkins on :8080 (localhost-facing; reached via SSH tunnel).
+- `scripts/bootstrap/management.sh` — jenkins track. Installs Java 21, Jenkins LTS, Trivy, Node 20, plugins from `jenkins/plugins.txt`, JCasC from `jenkins/jenkins.yaml`, systemd env from secrets; starts Jenkins on :8080 (localhost-facing; reached via SSH tunnel).
 
 ## Ports (security groups — terraform track)
 - alb: 80, 8080 from 0.0.0.0/0

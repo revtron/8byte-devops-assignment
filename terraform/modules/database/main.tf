@@ -4,15 +4,16 @@ resource "random_password" "master" {
   override_special = "_-"
 }
 
+# RDS names (subnet group, parameter group, instance identifier) must start
+# with a letter, hence the prefix-first names.
 resource "aws_db_subnet_group" "this" {
-  name        = "${var.project}-db"
+  name        = "db-${var.project}"
   description = "Private subnets for ${var.project} RDS"
   subnet_ids  = var.private_subnet_ids
 
-  tags = { Name = "${var.project}-db" }
+  tags = { Name = "db-${var.project}" }
 }
 
-# RDS identifiers must start with a letter, hence the prefix-first names.
 resource "aws_db_parameter_group" "this" {
   name        = "pg16-${var.project}"
   family      = "postgres16"
@@ -49,7 +50,7 @@ resource "aws_db_instance" "this" {
   publicly_accessible    = false
   multi_az               = false
 
-  backup_retention_period = 7
+  backup_retention_period = var.backup_retention_days
   backup_window           = "20:00-21:00"
   maintenance_window      = "sun:21:30-sun:22:30"
   copy_tags_to_snapshot   = true

@@ -104,6 +104,9 @@ git -C "$REPO_DIR" remote set-url origin "https://github.com/$GITHUB_REPO"
 unset GITHUB_TOKEN CLONE_URL
 set -x
 chown -R "$ROLE:$ROLE" "$REPO_DIR"
+# The checkout is owned by the role user but read by root (this script, the
+# role bootstrap, deploy.sh); git >= 2.35 refuses that as "dubious ownership".
+git config --system --add safe.directory "$REPO_DIR"
 git -C "$REPO_DIR" --no-pager log -1 --oneline
 
 # --- 5. hand off to the role script --------------------------------------------------

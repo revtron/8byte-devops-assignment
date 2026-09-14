@@ -30,11 +30,12 @@ module "notifications" {
 module "database" {
   source = "./modules/database"
 
-  project            = var.project
-  private_subnet_ids = module.network.private_subnet_ids
-  rds_sg_id          = module.security.rds_sg_id
-  instance_class     = var.db_instance_class
-  allocated_storage  = var.db_allocated_storage
+  project               = var.project
+  private_subnet_ids    = module.network.private_subnet_ids
+  rds_sg_id             = module.security.rds_sg_id
+  instance_class        = var.db_instance_class
+  allocated_storage     = var.db_allocated_storage
+  backup_retention_days = var.db_backup_retention_days
 }
 
 module "secrets" {

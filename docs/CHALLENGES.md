@@ -47,6 +47,10 @@ does not catch this — it would have failed at apply.
 **Fix.** `identifier = "db-${var.project}"`, parameter group
 `pg16-${var.project}`; the `Name` tag keeps the readable `8byte-` form
 ([`terraform/modules/database/main.tf`](../terraform/modules/database/main.tf)).
+The first real `apply` then failed on the one name the review had missed —
+the DB subnet group, `8byte-db` (`InvalidParameterValue: Invalid subnet group
+name`) — so it became `db-${var.project}` too. The rule covers every RDS
+name, not just the instance identifier.
 
 **Lesson.** Provider-side naming rules are only enforced at apply; review
 names against the service docs when the project prefix is unusual.
@@ -186,3 +190,43 @@ box is listed in the README under "Known limitations".
 
 **Lesson.** State clearly what was verified and how; a reviewer can forgive
 "not run here" but not "it works" without evidence.
+
+## 13. First real apply: the free-plan account caps RDS backups
+
+**Problem.** `terraform apply` failed with `FreeTierRestrictionError: The
+specified backup retention period exceeds the maximum available to free tier
+customers` — the design said 7 days of automated backups; an AWS free-plan
+account allows 1.
+
+**Fix.** `backup_retention_period` became a variable
+(`db_backup_retention_days`, default 7, set to 1 in `envs/dev.tfvars`) so the
+design stays intact and the account limit is a tfvars override, not a code
+change. Documented next to the other optional overrides in
+`envs/dev.tfvars.example`.
+
+**Lesson.** Account-level limits are invisible to `validate` and `plan`;
+anything that might hit one should be a variable so the fix is data, not code.
+
+## 14. `chown` to the role user, then `git` as root: "dubious ownership"
+
+**Problem.** On all three hosts cloud-init died right after cloning the repo.
+User-data clones `/opt/8byte/repo`, `chown -R backend:backend`s it so the
+role user can read it, then runs `git log -1` as root for the boot log. git
+≥ 2.35 refuses to touch a repository owned by another user
+(`fatal: detected dubious ownership in repository`), `set -e` stopped the
+script, and the role bootstrap never ran — the hosts sat with Docker installed
+and nothing else. This was invisible to every static check; it only shows up
+with a real git on a real host.
+
+**Fix.** `git config --system --add safe.directory "$REPO_DIR"` immediately
+after the `chown` in
+[`terraform/templates/user_data.sh.tftpl`](../terraform/templates/user_data.sh.tftpl)
+(system-wide so root, the role user and later `deploy.sh` all pass).
+Because user-data is part of the instance definition
+(`user_data_replace_on_change = true`), the fix was applied by letting
+Terraform replace the three instances — about three minutes, and it proved
+the "rebuild from git" property rather than hand-patching live hosts.
+
+**Lesson.** Any script that changes a checkout's owner and then runs git as
+someone else needs `safe.directory`. Also: replacing instances to apply a
+user-data fix is cheap here and is the honest test of reproducibility.

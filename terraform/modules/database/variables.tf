@@ -21,6 +21,12 @@ variable "allocated_storage" {
   default = 20
 }
 
+variable "backup_retention_days" {
+  description = "Automated backup retention. Free-plan accounts are capped at 1."
+  type        = number
+  default     = 7
+}
+
 variable "engine_version" {
   description = "PostgreSQL major version; minor upgrades are automatic."
   type        = string

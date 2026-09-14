@@ -377,7 +377,7 @@ rendered templates, fake-backed script tests) rather than by running them:
 - the Docker image build, `docker compose` for the app, and the integration tests against a real Postgres (unit tests: 35/35 green locally);
 - Jenkins boot: plugin installation with `latest` versions, JCasC `${VAR}` resolution, Job DSL acceptance of the `github` branch source and `useScriptSecurity: false`;
 - the monitoring stack coming up, Grafana loading the provisioned dashboards, Alertmanager publishing to SNS, promtail reading the journal;
-- AL2023 package names in the bootstrap scripts (`nodejs20`, `postgresql16`, `java-17-amazon-corretto-headless`, Trivy EL9 repo).
+- AL2023 package names in the bootstrap scripts (`nodejs20`, `postgresql16`, `java-21-amazon-corretto-headless`, Trivy EL9 repo).
 
 What to check on first boot: `/var/log/8byte-bootstrap.log` on each host;
 `curl localhost:3000/health` on backend (`db: "ok"` proves the RDS TLS path);

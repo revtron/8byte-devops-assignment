@@ -50,6 +50,12 @@ variable "db_allocated_storage" {
   default     = 20
 }
 
+variable "db_backup_retention_days" {
+  description = "RDS automated backup retention in days. AWS free-plan accounts reject values above 1."
+  type        = number
+  default     = 7
+}
+
 variable "admin_cidr" {
   description = "CIDR allowed to SSH to the management host (your public IP, e.g. 203.0.113.4/32)."
   type        = string

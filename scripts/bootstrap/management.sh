@@ -6,7 +6,7 @@
 # re-run to pick up a new jenkins/jenkins.yaml or jenkins/plugins.txt:
 #     sudo bash /opt/8byte/repo/scripts/bootstrap/management.sh
 #
-# Installs: Java 17 (Corretto), Jenkins LTS, Node 20, Trivy, Jenkins plugins;
+# Installs: Java 21 (Corretto), Jenkins LTS, Node 20, Trivy, Jenkins plugins;
 # writes the JCasC file and a systemd override that exports the secrets and
 # environment JCasC references; starts Jenkins on 127.0.0.1:8080 (reach it via
 # the SSH tunnel: `ssh management` forwards 8080).
@@ -42,10 +42,11 @@ GITHUB_OWNER="${GITHUB_REPO%%/*}"
 GITHUB_REPO_NAME="${GITHUB_REPO#*/}"
 GITHUB_REPO_NAME="${GITHUB_REPO_NAME%.git}"
 
-# --- Java 17 --------------------------------------------------------------------
-if ! rpm -q java-17-amazon-corretto-headless >/dev/null 2>&1; then
-  log "installing Java 17 (Corretto)"
-  dnf install -y -q java-17-amazon-corretto-headless fontconfig
+# --- Java 21 --------------------------------------------------------------------
+# Jenkins LTS >= 2.516 refuses to start on anything older than Java 21.
+if ! rpm -q java-21-amazon-corretto-headless >/dev/null 2>&1; then
+  log "installing Java 21 (Corretto)"
+  dnf install -y -q java-21-amazon-corretto-headless fontconfig
 fi
 
 # --- Jenkins LTS ----------------------------------------------------------------
