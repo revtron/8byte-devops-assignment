@@ -14,6 +14,11 @@ output "management_eip" {
   value = module.compute.management_eip
 }
 
+output "jenkins_url" {
+  description = "Jenkins UI on the management EIP; the security group admits :8080 from admin_cidr only."
+  value       = "http://${module.compute.management_eip}:8080/"
+}
+
 output "backend_private_ip" {
   value = module.compute.backend_private_ip
 }

@@ -52,14 +52,19 @@ after `git -C /opt/8byte/repo pull`) or copy the file and use
 
 ## Logging in
 
-Jenkins listens on `127.0.0.1:8080` only; the management security group
-allows nothing but SSH from your IP. Use the tunnel that
-`scripts/setup-ssh.*` configures (`LocalForward 8080 localhost:8080`):
+Jenkins listens on `0.0.0.0:8080`; the management security group admits
+port 8080 (and 22) from `admin_cidr` only, so the UI is
+`http://<management-eip>:8080/` from your own address:
 
 ```
-management            # alias for: ssh management
-# then open http://localhost:8080
+terraform -chdir=terraform output -raw jenkins_url
 ```
+
+From anywhere else the SSH tunnel that `scripts/setup-ssh.*` configures
+(`LocalForward 8080 localhost:8080`) still works: `ssh management`, then
+open <http://localhost:8080>. The root URL JCasC sets (`unclassified.location.url`)
+comes from `JENKINS_PUBLIC_URL`, which the bootstrap derives from the
+instance's public IP via IMDS.
 
 User: `admin`. Password:
 

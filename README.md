@@ -190,13 +190,17 @@ the SNS subscription email in the meantime.
 
 **8. Open Jenkins and run the pipeline.**
 
-Keep the `management` SSH session open (it holds the tunnel) and browse to
-<http://localhost:8080>. User `admin`; password:
+Jenkins is served on the management host's Elastic IP, port 8080, reachable
+only from `admin_cidr` (same rule as SSH):
 
 ```bash
+terraform -chdir=terraform output -raw jenkins_url     # http://<management-eip>:8080/
 aws secretsmanager get-secret-value --secret-id 8byte/jenkins \
   --query SecretString --output text | jq -r .admin_password
 ```
+
+User `admin`. (The `ssh management` tunnel still forwards <http://localhost:8080>
+as a fallback, e.g. from a network whose IP is not in `admin_cidr`.)
 
 The `todo` multibranch job scans the repo within a minute and builds `main`.
 Watch it go through tests, scans, image build/push and the staging deploy;

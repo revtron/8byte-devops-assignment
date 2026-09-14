@@ -68,7 +68,7 @@ credentials:
 
 unclassified:
   location:
-    url: http://localhost:8080/
+    url: ${JENKINS_PUBLIC_URL:-http://localhost:8080/}
     adminAddress: "Jenkins <jenkins@localhost>"
   # Default is ThrottleForNormalize, which spreads the hourly GitHub quota
   # evenly and sleeps minutes per API call once it is "over budget" — with an

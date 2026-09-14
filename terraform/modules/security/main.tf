@@ -44,7 +44,7 @@ resource "aws_vpc_security_group_ingress_rule" "alb_public" {
   cidr_ipv4         = "0.0.0.0/0"
 }
 
-# ---- management: 22 from admin_cidr -----------------------------------------
+# ---- management: 22 and 8080 (Jenkins) from admin_cidr -----------------------
 
 resource "aws_vpc_security_group_ingress_rule" "management_ssh" {
   security_group_id = aws_security_group.this["management"].id
@@ -52,6 +52,18 @@ resource "aws_vpc_security_group_ingress_rule" "management_ssh" {
   ip_protocol       = "tcp"
   from_port         = 22
   to_port           = 22
+  cidr_ipv4         = var.admin_cidr
+}
+
+# Jenkins is reachable directly on the management EIP, but only from the
+# admin address — the same trust boundary as SSH. Widen admin_cidr (or add
+# a rule) for other reviewers rather than opening it to the internet.
+resource "aws_vpc_security_group_ingress_rule" "management_jenkins" {
+  security_group_id = aws_security_group.this["management"].id
+  description       = "Jenkins UI from admin"
+  ip_protocol       = "tcp"
+  from_port         = 8080
+  to_port           = 8080
   cidr_ipv4         = var.admin_cidr
 }
 
