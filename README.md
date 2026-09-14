@@ -150,6 +150,20 @@ never expose or copy keys onto the bastion; the key stays on your laptop).
 `management` also opens `localhost:8080 → Jenkins`, and `mon` opens
 `localhost:3000 → Grafana` and `localhost:9090 → Prometheus`.
 
+There is no EC2 key-pair object: the public key from `admin_public_key` is
+written by user-data into `~/.ssh/authorized_keys` of a per-host user
+(`management`, `backend`, `mon`), and the private key never leaves your
+machine. If `ssh management` **times out**, your public IP has almost
+certainly changed (the bastion's security group allows `admin_cidr` only):
+
+```bash
+scripts/update-admin-cidr.sh          # or .\scripts\update-admin-cidr.ps1
+```
+
+detects the new IP, rewrites `admin_cidr` in `envs/dev.tfvars` and applies
+just the security-group rule. If instead you get *host key verification
+failed*, the host was rebuilt — `ssh-keygen -R <management-eip>`.
+
 **7. Wait for the hosts to bootstrap (~10 minutes; Jenkins and its plugins are the slow part).**
 
 ```bash

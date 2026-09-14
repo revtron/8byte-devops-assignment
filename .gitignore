@@ -35,3 +35,6 @@ monitoring/alertmanager/alertmanager.yml
 Thumbs.db
 *.pdf
 .superpowers/
+
+# --- local copy of the SSH key pair (see README "SSH access") ---
+key-x.*
