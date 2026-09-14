@@ -375,3 +375,5 @@ intentionally differs from the sections above and why.
 | `DATABASE_URL` plain | `?sslmode=require`; image bundles the RDS CA via `NODE_EXTRA_CA_CERTS` | RDS PostgreSQL 16 forces SSL; node-postgres verifies the chain |
 | RDS `backup_retention_period = 7` | Variable `db_backup_retention_days` (default 7), `1` in `dev.tfvars` | AWS free-plan accounts reject more than 1 day (found at first apply, 2026-09-14) |
 | user-data: clone, `chown` to role user, `git log` | + `git config --system --add safe.directory` | git ≥ 2.35 "dubious ownership" killed cloud-init on all three hosts (found at first apply, 2026-09-14) |
+| Management installs Java 17 | Java 21 (`java-21-amazon-corretto-headless`) | Jenkins LTS 2.5xx refuses to start on < 21 (found at first apply, 2026-09-14) |
+| Jenkins default temp dir | `-Djava.io.tmpdir=/var/lib/jenkins/tmp` | AL2023 `/tmp` tmpfs (~950 MiB on t3.small) is under Jenkins' 1 GiB node-monitor threshold; built-in node went offline (found at first apply, 2026-09-14) |

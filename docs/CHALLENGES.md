@@ -230,3 +230,40 @@ the "rebuild from git" property rather than hand-patching live hosts.
 **Lesson.** Any script that changes a checkout's owner and then runs git as
 someone else needs `safe.directory`. Also: replacing instances to apply a
 user-data fix is cheap here and is the honest test of reproducibility.
+
+## 15. Jenkins LTS now requires Java 21
+
+**Problem.** `jenkins.service` crash-looped on the freshly built management
+host: `Running with Java 17 ... older than the minimum required version
+(Java 21). Supported Java versions are: [21, 25]`. The bootstrap installed
+`java-17-amazon-corretto-headless`, which was correct when the design was
+written and is not any more — the LTS line moved its floor to Java 21 in
+2025. This was exactly the "plugin/package versions unverified" risk the
+README listed.
+
+**Fix.** `java-21-amazon-corretto-headless` (available in the AL2023 repo)
+in [`scripts/bootstrap/management.sh`](../scripts/bootstrap/management.sh).
+
+**Lesson.** Anything installed as "latest" (Jenkins LTS, its plugins) has a
+moving set of prerequisites; the bootstrap log's first Jenkins start is the
+place to look when the UI never answers.
+
+## 16. Jenkins built-in node offline: AL2023 `/tmp` is a small tmpfs
+
+**Problem.** Jenkins started, JCasC applied, the multibranch job discovered
+`main` and queued build #1 — which sat at *Waiting for next available
+executor* forever. The node monitor had taken the built-in node offline:
+`Disk space is below threshold of 1.00 GiB. Only 950.13 MiB out of 954.88
+MiB left on /tmp`. Amazon Linux 2023 mounts `/tmp` as a tmpfs sized to half
+the RAM; on a t3.small that is under Jenkins' default 1 GiB temp-space
+threshold, so a perfectly healthy controller refuses to run anything.
+
+**Fix.** `-Djava.io.tmpdir=/var/lib/jenkins/tmp` in the systemd override
+written by the bootstrap, so Jenkins' temp space (and its monitor) live on
+the 30 GB root volume. Lowering the threshold in JCasC would also work but
+would leave builds writing into a 950 MiB RAM disk.
+
+**Lesson.** "Queued but never starts" is a node-availability problem before
+it is a pipeline problem: check `/computer/api/json` for `offlineCauseReason`
+first.
+

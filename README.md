@@ -85,7 +85,7 @@ flowchart LR
   ssh-keygen -t ed25519 -f ~/.ssh/8byte -C you@laptop
   ```
 - A Docker Hub account, a public repository (e.g. `youruser/todo`) and an access token with write scope.
-- This repository pushed to GitHub. Public repos need no token; for a private repo create a PAT with `repo` scope (public repos need `public_repo` + `repo:status` for commit statuses).
+- This repository pushed to GitHub, and a GitHub PAT. A public repo *can* be scanned without one, but anonymous GitHub API calls are capped at 60/hour and Jenkins throttles hard against that (branch scans and builds stall for minutes), so a token is strongly recommended: classic PAT with `public_repo` + `repo:status` (public repo) or `repo` (private) — 5000 requests/hour and commit statuses.
 - Your public IP (`curl -s https://checkip.amazonaws.com`) for `admin_cidr`.
 - An email address for alerts (you will get one SNS confirmation email to click).
 
@@ -124,7 +124,7 @@ cp envs/dev.tfvars.example envs/dev.tfvars
 ```bash
 terraform apply -var-file=envs/dev.tfvars -target=module.secrets
 DOCKERHUB_USERNAME=youruser DOCKERHUB_TOKEN=dckr_pat_... GITHUB_TOKEN= ../scripts/put-secrets.sh
-# omit the variables to be prompted silently; GITHUB_TOKEN= (empty) means public repo
+# omit the variables to be prompted silently; GITHUB_TOKEN= (empty) = anonymous scanning (60 req/h, not recommended)
 ```
 
 **5. Apply everything.**

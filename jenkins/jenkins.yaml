@@ -70,6 +70,12 @@ unclassified:
   location:
     url: http://localhost:8080/
     adminAddress: "Jenkins <jenkins@localhost>"
+  # Default is ThrottleForNormalize, which spreads the hourly GitHub quota
+  # evenly and sleeps minutes per API call once it is "over budget" — with an
+  # unauthenticated 60 req/h quota that stalls every build. Only back off when
+  # the limit is actually hit.
+  gitHubConfiguration:
+    apiRateLimitChecker: ThrottleOnOver
 
 jobs:
   - script: |
