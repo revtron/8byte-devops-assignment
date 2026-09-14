@@ -145,16 +145,29 @@ scripts/setup-ssh.sh          # Git Bash / Linux / macOS: ~/.ssh/config + ~/.bas
 This renders `terraform output -raw ssh_config` into a managed
 `# BEGIN 8byte … # END 8byte` block. After that, typing `management`,
 `backend` or `mon` in a new shell runs `ssh <host>`. `backend` and `mon` use
-`ProxyJump management`, so SSH goes through the bastion automatically (you
-never expose or copy keys onto the bastion; the key stays on your laptop).
+`ProxyJump management`, so SSH goes through the bastion automatically.
 `management` also opens `localhost:8080 → Jenkins`, and `mon` opens
 `localhost:3000 → Grafana` and `localhost:9090 → Prometheus`.
 
+To also hop the classic way — log in to management, then `ssh backend` /
+`ssh mon` from there — run once (and again after the management host is
+rebuilt):
+
+```bash
+scripts/setup-bastion-hop.sh
+```
+
+It copies the private key to `management:~/.ssh/8byte` (mode 600) and writes
+a `~/.ssh/config` there for the two private hosts, then tests both hops.
+This is a convenience for operating from the bastion; the ProxyJump path
+above works without any key on it, and Jenkins never uses SSH (deploys go
+over SSM).
+
 There is no EC2 key-pair object: the public key from `admin_public_key` is
 written by user-data into `~/.ssh/authorized_keys` of a per-host user
-(`management`, `backend`, `mon`), and the private key never leaves your
-machine. If `ssh management` **times out**, your public IP has almost
-certainly changed (the bastion's security group allows `admin_cidr` only):
+(`management`, `backend`, `mon`). If `ssh management` **times out**, your
+public IP has almost certainly changed (the bastion's security group allows
+`admin_cidr` only):
 
 ```bash
 scripts/update-admin-cidr.sh          # or .\scripts\update-admin-cidr.ps1
