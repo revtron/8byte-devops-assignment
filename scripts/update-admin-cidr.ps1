@@ -24,7 +24,9 @@ Write-Host "admin_cidr: $current -> $Cidr"
 Push-Location (Join-Path $repoRoot 'terraform')
 try {
   terraform apply -input=false -auto-approve -var-file=$tfvars `
-    -target=module.security.aws_vpc_security_group_ingress_rule.management_ssh
+    -target=module.security.aws_vpc_security_group_ingress_rule.management_ssh `
+    -target=module.security.aws_vpc_security_group_ingress_rule.management_jenkins `
+    -target=module.security.aws_vpc_security_group_ingress_rule.alb_admin
   if ($LASTEXITCODE -ne 0) { throw "terraform apply failed" }
 } finally { Pop-Location }
 Write-Host "done - 'ssh management' should work again"

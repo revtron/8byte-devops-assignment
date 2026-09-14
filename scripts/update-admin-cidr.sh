@@ -27,6 +27,10 @@ sed -i "s#^admin_cidr[[:space:]]*=.*#admin_cidr       = \"$cidr\"#" "$TFVARS"
 echo "admin_cidr: $current -> $cidr"
 
 cd "$REPO_ROOT/terraform"
+# Every rule keyed on admin_cidr: SSH + Jenkins on management, Grafana +
+# Prometheus on the ALB.
 terraform apply -input=false -auto-approve -var-file="$TFVARS" \
-  -target=module.security.aws_vpc_security_group_ingress_rule.management_ssh
-echo "done — 'ssh management' should work again"
+  -target=module.security.aws_vpc_security_group_ingress_rule.management_ssh \
+  -target=module.security.aws_vpc_security_group_ingress_rule.management_jenkins \
+  -target=module.security.aws_vpc_security_group_ingress_rule.alb_admin
+echo "done — SSH, Jenkins, Grafana and Prometheus admit $cidr again"

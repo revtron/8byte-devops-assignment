@@ -175,7 +175,7 @@ scripts/update-admin-cidr.sh          # or .\scripts\update-admin-cidr.ps1
 ```
 
 detects the new IP, rewrites `admin_cidr` in `envs/dev.tfvars` and applies
-just the security-group rule. If instead you get *host key verification
+just the security-group rules keyed on it (SSH, Jenkins, Grafana, Prometheus). If instead you get *host key verification
 failed*, the host was rebuilt — `ssh-keygen -R <management-eip>`.
 
 **7. Wait for the hosts to bootstrap (~10 minutes; Jenkins and its plugins are the slow part).**
