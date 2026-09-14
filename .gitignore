@@ -38,3 +38,6 @@ Thumbs.db
 
 # --- local copy of the SSH key pair (see README "SSH access") ---
 key-x.*
+
+# --- local cheat sheet with live URLs and passwords ---
+/memory.md
