@@ -102,6 +102,31 @@ resource "aws_vpc_security_group_ingress_rule" "backend_from_mon" {
 
 # ---- mon ---------------------------------------------------------------------
 
+# Grafana (3000) and Prometheus (9090) are published through the ALB, which
+# only admits those ports from admin_cidr; mon itself accepts them from the
+# ALB security group alone.
+resource "aws_vpc_security_group_ingress_rule" "alb_admin" {
+  for_each = toset(["3000", "9090"])
+
+  security_group_id = aws_security_group.this["alb"].id
+  description       = "${each.key == "3000" ? "Grafana" : "Prometheus"} from admin"
+  ip_protocol       = "tcp"
+  from_port         = tonumber(each.key)
+  to_port           = tonumber(each.key)
+  cidr_ipv4         = var.admin_cidr
+}
+
+resource "aws_vpc_security_group_ingress_rule" "mon_from_alb" {
+  for_each = toset(["3000", "9090"])
+
+  security_group_id            = aws_security_group.this["mon"].id
+  description                  = "${each.key == "3000" ? "Grafana" : "Prometheus"} from the ALB"
+  ip_protocol                  = "tcp"
+  from_port                    = tonumber(each.key)
+  to_port                      = tonumber(each.key)
+  referenced_security_group_id = aws_security_group.this["alb"].id
+}
+
 resource "aws_vpc_security_group_ingress_rule" "mon_ssh" {
   security_group_id            = aws_security_group.this["mon"].id
   description                  = "SSH from management"

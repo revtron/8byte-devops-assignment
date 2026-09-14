@@ -73,3 +73,58 @@ resource "aws_lb_listener" "this" {
 
   tags = { Name = "${var.project}-${each.key}-listener" }
 }
+
+# ---- monitoring UIs on the mon host, same port on the ALB ---------------------
+# The ALB security group admits these ports from admin_cidr only (see the
+# security module), so this is an operator convenience, not a public surface.
+
+locals {
+  mon_uis = {
+    grafana    = { port = 3000, health = "/api/health" }
+    prometheus = { port = 9090, health = "/-/healthy" }
+  }
+}
+
+resource "aws_lb_target_group" "mon" {
+  for_each = local.mon_uis
+
+  name        = "${var.project}-${each.key}"
+  port        = each.value.port
+  protocol    = "HTTP"
+  target_type = "instance"
+  vpc_id      = var.vpc_id
+
+  health_check {
+    path                = each.value.health
+    matcher             = "200"
+    interval            = 15
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+  }
+
+  tags = { Name = "${var.project}-${each.key}" }
+}
+
+resource "aws_lb_target_group_attachment" "mon" {
+  for_each = local.mon_uis
+
+  target_group_arn = aws_lb_target_group.mon[each.key].arn
+  target_id        = var.mon_instance_id
+  port             = each.value.port
+}
+
+resource "aws_lb_listener" "mon" {
+  for_each = local.mon_uis
+
+  load_balancer_arn = aws_lb.this.arn
+  port              = each.value.port
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.mon[each.key].arn
+  }
+
+  tags = { Name = "${var.project}-${each.key}-listener" }
+}

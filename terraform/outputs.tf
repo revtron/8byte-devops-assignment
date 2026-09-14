@@ -10,6 +10,16 @@ output "staging_url" {
   value = "http://${module.alb.alb_dns_name}:8080"
 }
 
+output "grafana_url" {
+  description = "Grafana through the ALB; admitted from admin_cidr only."
+  value       = "http://${module.alb.alb_dns_name}:3000"
+}
+
+output "prometheus_url" {
+  description = "Prometheus through the ALB; admitted from admin_cidr only."
+  value       = "http://${module.alb.alb_dns_name}:9090"
+}
+
 output "management_eip" {
   value = module.compute.management_eip
 }

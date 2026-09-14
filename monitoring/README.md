@@ -92,8 +92,8 @@ ssh -N \
 
 Then open:
 
-- Grafana: http://localhost:3000 — user `admin`, password = Jenkins admin password (`8byte/jenkins` secret)
-- Prometheus: http://localhost:9090 (Status -> Targets shows every scrape job; Alerts shows rule state)
+- Grafana: `terraform output -raw grafana_url` (ALB :3000, admin_cidr only) or http://localhost:3000 through the tunnel — user `admin`, password = Jenkins admin password (`8byte/jenkins` secret)
+- Prometheus: `terraform output -raw prometheus_url` (ALB :9090, admin_cidr only) or http://localhost:9090 through the tunnel (Status -> Targets shows every scrape job; Alerts shows rule state)
 - Alertmanager: http://localhost:9093
 - Loki API: http://localhost:3100/ready
 

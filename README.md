@@ -28,7 +28,7 @@ flowchart LR
 
   subgraph vpc["VPC 10.0.0.0/16 (ap-south-1)"]
     subgraph pub["Public subnets 10.0.0.0/24, 10.0.1.0/24"]
-      alb["ALB<br/>:80 → prod, :8080 → staging"]
+      alb["ALB<br/>:80 → prod, :8080 → staging<br/>:3000 → Grafana, :9090 → Prometheus (admin only)"]
       mgmt["management (t3.small, EIP)<br/>bastion + Jenkins + Docker + Trivy"]
       nat["NAT gateway"]
     end
@@ -40,7 +40,8 @@ flowchart LR
   end
 
   dev -- "SSH 22" --> mgmt
-  dev -- "HTTP 80 / 8080" --> alb
+  dev -- "HTTP 80 / 8080 (+3000/9090)" --> alb
+  alb -- "3000 / 9090" --> mon
   mgmt -- "SSH (ProxyJump)" --> be & mon
   mgmt -- "SSM Run Command" --> be
   alb -- "3000 / 3001" --> be
@@ -66,7 +67,7 @@ flowchart LR
 | Decision | Why |
 |---|---|
 | **EC2 + Docker** (Amazon Linux 2023) rather than ECS/EKS | A real OS gives infrastructure metrics, bastion access and SSM to show; a managed scheduler would hide half of what the assignment asks to demonstrate and costs more. |
-| **Three hosts, strict jump model** | `management` is the only public host (SSH from your IP only). `backend` and `mon` have no public IPs; you reach them via `ProxyJump` and reach every UI via SSH tunnels. Jenkins lives on management to save a box. |
+| **Three hosts, strict jump model** | `management` is the only public host (SSH and Jenkins on 8080, both from your IP only). `backend` and `mon` have no public IPs; you reach them via `ProxyJump`, and Grafana/Prometheus are published through the ALB on 3000/9090 from your IP only. Jenkins lives on management to save a box. |
 | **Single infrastructure, logical prod/staging** | Two containers on the backend host, two ALB listeners (`:80`, `:8080`), two target groups, two databases (`todo_prod`, `todo_staging`). Real process/data/URL separation at near-zero extra cost; the Terraform root is parameterised so physical separation is a tfvars change. |
 | **Jenkins on management, configured by JCasC, polling GitHub every minute** | Everything about Jenkins is in [`jenkins/jenkins.yaml`](jenkins/jenkins.yaml) and [`jenkins/plugins.txt`](jenkins/plugins.txt); a rebuilt host is identical. Polling (not webhooks) keeps Jenkins fully private with no inbound endpoint; a push still builds within 60 s and results post back as GitHub commit statuses. |
 | **Deploys via `aws ssm send-command`** | No SSH keys in Jenkins. The management instance role may run `AWS-RunShellScript` on the backend instance only; every deploy is an auditable SSM invocation. |
@@ -219,12 +220,19 @@ terraform output staging_url    # http://<alb-dns>:8080
 
 **10. Open Grafana.**
 
+Grafana and Prometheus are published through the ALB on their own ports,
+admitted from `admin_cidr` only (the app listeners on 80/8080 stay open to
+everyone):
+
 ```bash
-mon                             # tunnel: localhost:3000 (Grafana), localhost:9090 (Prometheus)
+terraform -chdir=terraform output -raw grafana_url      # http://<alb-dns>:3000
+terraform -chdir=terraform output -raw prometheus_url   # http://<alb-dns>:9090
 ```
 
-<http://localhost:3000>, user `admin`, password = the Jenkins admin password
-above (one admin secret for both UIs). Dashboards are in the `8byte` folder.
+User `admin`, password = the Jenkins admin password above (one admin secret
+for both UIs). Dashboards are in the `8byte` folder. The SSH tunnel
+(`mon` → <http://localhost:3000> / <http://localhost:9090>) remains as a
+fallback from networks outside `admin_cidr`.
 
 ### Local developer loop
 

@@ -59,6 +59,7 @@ module "alb" {
   public_subnet_ids   = module.network.public_subnet_ids
   alb_sg_id           = module.security.alb_sg_id
   backend_instance_id = module.compute.backend_instance_id
+  mon_instance_id     = module.compute.mon_instance_id
   account_id          = local.account_id
 }
 

@@ -30,3 +30,8 @@ variable "log_retention_days" {
   type    = number
   default = 30
 }
+
+variable "mon_instance_id" {
+  description = "Instance behind the Grafana (3000) and Prometheus (9090) listeners."
+  type        = string
+}
