@@ -84,7 +84,7 @@ flowchart LR
   ```bash
   ssh-keygen -t ed25519 -f ~/.ssh/8byte -C you@laptop
   ```
-- A Docker Hub account, a public repository (e.g. `youruser/todo`) and an access token with write scope.
+- A Docker Hub account and an access token with **Read & Write** scope (a read-only token logs in fine and only fails at `docker push`; `put-secrets.sh` checks the scope up front). The repository `youruser/todo` is created public on first push, or create it yourself beforehand.
 - This repository pushed to GitHub, and a GitHub PAT. A public repo *can* be scanned without one, but anonymous GitHub API calls are capped at 60/hour and Jenkins throttles hard against that (branch scans and builds stall for minutes), so a token is strongly recommended: classic PAT with `public_repo` + `repo:status` (public repo) or `repo` (private) — 5000 requests/hour and commit statuses.
 - Your public IP (`curl -s https://checkip.amazonaws.com`) for `admin_cidr`.
 - An email address for alerts (you will get one SNS confirmation email to click).
@@ -367,17 +367,22 @@ new value is picked up; Grafana's stored password is reset with
 - **Jenkins:** no backup needed — the controller is reproduced from `jenkins.yaml`, `plugins.txt` and the bootstrap script. Build history is disposable (last 20 builds kept).
 - **Application code and images:** git on GitHub; every image tag is a commit SHA on Docker Hub, so any previous version can be redeployed.
 
-## Known limitations / not verified locally
+## What was verified on real infrastructure
 
-The development machine had no Docker and Terraform was never applied against
-a real account during the build (no credentials on hand), so these parts were
+The development machine had no Docker, so during the build everything was
 verified statically (`terraform validate`, `bash -n`, YAML/JSON parsing,
-rendered templates, fake-backed script tests) rather than by running them:
+rendered templates, fake-backed script tests). On 2026-09-14 the stack was
+then applied for real in `ap-south-1` and the following was observed on the
+hosts (the fixes it took are [`docs/CHALLENGES.md`](docs/CHALLENGES.md) §13–§18):
 
-- the Docker image build, `docker compose` for the app, and the integration tests against a real Postgres (unit tests: 35/35 green locally);
-- Jenkins boot: plugin installation with `latest` versions, JCasC `${VAR}` resolution, Job DSL acceptance of the `github` branch source and `useScriptSecurity: false`;
-- the monitoring stack coming up, Grafana loading the provisioned dashboards, Alertmanager publishing to SNS, promtail reading the journal;
-- AL2023 package names in the bootstrap scripts (`nodejs20`, `postgresql16`, `java-21-amazon-corretto-headless`, Trivy EL9 repo).
+- `terraform apply` from a fresh account: bootstrap root, then 78 resources in the main root; three instance replacements to roll user-data/bootstrap fixes, EIP and RDS untouched.
+- **backend** bootstrap in 86 s: node_exporter, promtail (shipping to Loki on mon), `psql`, `todo_prod` + `todo_staging` created on RDS over TLS, `deploy.sh` installed.
+- **mon** bootstrap in 112 s: Prometheus (7/7 infra targets UP, 9 rules loaded), Alertmanager (SNS receiver rendered with the real topic ARN), Grafana 11 (both datasources healthy, all 3 dashboards provisioned), Loki receiving logs from both hosts, postgres_exporter `pg_up 1`.
+- **management**: Jenkins LTS 2.568 on Java 21, 85/85 plugins active, JCasC applied without errors, both credentials present, multibranch job discovers `main` and builds it automatically. Build stages verified green on the host: checkout, lint, 35 unit tests, 3 integration tests against a real Postgres container, `trivy fs` (0 findings), image build, `trivy image` — which correctly **failed** the first build on a real CRITICAL CVE in the base image (now fixed). Failure notification published to SNS.
+
+Not yet exercised at the time of writing: `Push image` onwards (the Docker
+Hub token supplied was read-only — see §18), hence the SSM deploy, ALB smoke
+tests and the production approval gate.
 
 What to check on first boot: `/var/log/8byte-bootstrap.log` on each host;
 `curl localhost:3000/health` on backend (`db: "ok"` proves the RDS TLS path);

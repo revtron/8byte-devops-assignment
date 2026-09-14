@@ -37,6 +37,29 @@ prompt_if_unset DOCKERHUB_USERNAME "Docker Hub username"
 prompt_if_unset DOCKERHUB_TOKEN "Docker Hub access token"
 prompt_if_unset GITHUB_TOKEN "GitHub PAT (repo scope; leave empty for a public repo)" optional
 
+# A read-only Docker Hub token logs in fine and only fails at `docker push`,
+# ten stages into the pipeline. Check its scope here instead: log in to the
+# Hub API and read the scope claim of the JWT it returns. Any error talking
+# to Docker Hub is a warning, not a failure (offline, API change).
+check_dockerhub_scope() {
+  local jwt payload scope
+  jwt="$(curl -fsS -m 15 -X POST https://hub.docker.com/v2/users/login           -H 'Content-Type: application/json'           -d "$(jq -nc --arg u "$DOCKERHUB_USERNAME" --arg p "$DOCKERHUB_TOKEN" '{username: $u, password: $p}')"           2>/dev/null | jq -r '.token // empty')" || true
+  if [ -z "$jwt" ]; then
+    echo "WARNING: could not log in to Docker Hub with these credentials (bad token, or offline); continuing" >&2
+    return 0
+  fi
+  payload="$(printf '%s' "$jwt" | cut -d. -f2 | tr '_-' '/+')"
+  case $(( ${#payload} % 4 )) in 2) payload="$payload==" ;; 3) payload="$payload=" ;; esac
+  scope="$(printf '%s' "$payload" | base64 -d 2>/dev/null | jq -r '.scope // empty' 2>/dev/null || true)"
+  case "$scope" in
+    "" | *write* | *admin* | *delete*) ;;
+    *)
+      echo "ERROR: the Docker Hub token has scope '$scope' and cannot push images." >&2
+      echo "       Create one with 'Read & Write' at https://hub.docker.com/settings/security and re-run." >&2
+      exit 1 ;;
+  esac
+}
+
 # put <secret name> <json>
 put() {
   local name="$1" json="$2"
@@ -48,6 +71,7 @@ put() {
   echo "wrote $name"
 }
 
+check_dockerhub_scope
 put "$PROJECT/dockerhub" "$(jq -nc --arg u "$DOCKERHUB_USERNAME" --arg t "$DOCKERHUB_TOKEN" '{username: $u, token: $t}')"
 put "$PROJECT/github" "$(jq -nc --arg t "$GITHUB_TOKEN" '{token: $t}')"
 

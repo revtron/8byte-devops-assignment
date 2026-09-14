@@ -267,3 +267,39 @@ would leave builds writing into a 950 MiB RAM disk.
 it is a pipeline problem: check `/computer/api/json` for `offlineCauseReason`
 first.
 
+## 17. The image gate fired on the base image, not on the app
+
+**Problem.** The first real pipeline run failed at *Image scan*:
+`trivy image --severity CRITICAL --exit-code 1` found CVE-2026-59873 in
+`tar` 6.2.1 — inside `/usr/local/lib/node_modules/npm/`, the npm CLI that
+`node:20-alpine` ships, not in `app/node_modules` (0 findings there; the
+dependency scan of `package-lock.json` was also clean).
+
+**Fix.** The runtime stage never runs npm, so the final image deletes
+`/usr/local/lib/node_modules` and the `npm`/`npx`/`corepack` shims
+([`app/Dockerfile`](../app/Dockerfile)). Build #2 scanned clean. Smaller
+image, smaller attack surface, and the gate stays strict.
+
+**Lesson.** A CRITICAL gate on the whole image will regularly fire on the
+base image; the answer is to remove what the runtime does not need, not to
+lower the threshold or `--ignore-unfixed` it away.
+
+## 18. Docker Hub push: "access token has insufficient scopes"
+
+**Problem.** `docker login` succeeded but `docker push` was refused. The
+access token supplied had scope `repo:public_read` (visible by decoding the
+JWT that `hub.docker.com/v2/users/login` returns) — a read-only token logs
+in fine and only fails at the first write.
+
+**Fix.** A token with *Read & Write* scope, written with
+`scripts/put-secrets.sh` and picked up by re-running the management
+bootstrap (or replacing the instance). `put-secrets.sh` now
+logs in to the Hub API first and refuses a token whose JWT scope claim has
+no write permission (tested: the read-only token is rejected with a message
+pointing at the token settings page), so this is caught before any host
+boots.
+
+**Lesson.** "Login succeeded" proves authentication, not authorisation.
+Validate write access where the secret is entered, not on the tenth stage
+of a pipeline.
+
