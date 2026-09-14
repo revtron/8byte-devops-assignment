@@ -373,16 +373,14 @@ The development machine had no Docker, so during the build everything was
 verified statically (`terraform validate`, `bash -n`, YAML/JSON parsing,
 rendered templates, fake-backed script tests). On 2026-09-14 the stack was
 then applied for real in `ap-south-1` and the following was observed on the
-hosts (the fixes it took are [`docs/CHALLENGES.md`](docs/CHALLENGES.md) §13–§18):
+hosts (the fixes it took are [`docs/CHALLENGES.md`](docs/CHALLENGES.md) §13–§20):
 
 - `terraform apply` from a fresh account: bootstrap root, then 78 resources in the main root; three instance replacements to roll user-data/bootstrap fixes, EIP and RDS untouched.
 - **backend** bootstrap in 86 s: node_exporter, promtail (shipping to Loki on mon), `psql`, `todo_prod` + `todo_staging` created on RDS over TLS, `deploy.sh` installed.
 - **mon** bootstrap in 112 s: Prometheus (7/7 infra targets UP, 9 rules loaded), Alertmanager (SNS receiver rendered with the real topic ARN), Grafana 11 (both datasources healthy, all 3 dashboards provisioned), Loki receiving logs from both hosts, postgres_exporter `pg_up 1`.
-- **management**: Jenkins LTS 2.568 on Java 21, 85/85 plugins active, JCasC applied without errors, both credentials present, multibranch job discovers `main` and builds it automatically. Build stages verified green on the host: checkout, lint, 35 unit tests, 3 integration tests against a real Postgres container, `trivy fs` (0 findings), image build, `trivy image` — which correctly **failed** the first build on a real CRITICAL CVE in the base image (now fixed). Failure notification published to SNS.
-
-Not yet exercised at the time of writing: `Push image` onwards (the Docker
-Hub token supplied was read-only — see §18), hence the SSM deploy, ALB smoke
-tests and the production approval gate.
+- **management**: Jenkins LTS 2.568 on Java 21, 85/85 plugins active, JCasC applied without errors, both credentials present, multibranch job discovers `main` and builds it automatically.
+- **Pipeline, end to end** (build `main #1` after the fixes, ~2 min to the gate): checkout → lint → 35 unit tests → 3 integration tests against a real Postgres container → `trivy fs` (0) → image build → `trivy image` (0 CRITICAL; it had correctly **failed** an earlier run on a real CVE in the base image) → push `revtron/todo:<sha>` + `:latest` to Docker Hub (21 s) → `Deploy staging` via SSM (14 s) → ALB smoke test on `:8080` → **Approve production** (paused 7 min for a human) → `Deploy production` (8 s) → ALB smoke test on `:80` → `SUCCESS`, commit status `success` posted to GitHub, result email via SNS.
+- **Running app**: `GET /health` through the ALB returns `{"status":"ok","env":"prod","version":"<sha>","db":"ok"}` (staging on `:8080`); todos created through the API; Prometheus scrapes both `todo-app` targets (`http_requests_total` by env), Loki shows `todo-prod` / `todo-staging` container logs, and the *Todo — Application* dashboard populates.
 
 What to check on first boot: `/var/log/8byte-bootstrap.log` on each host;
 `curl localhost:3000/health` on backend (`db: "ok"` proves the RDS TLS path);

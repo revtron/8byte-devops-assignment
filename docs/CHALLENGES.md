@@ -303,3 +303,31 @@ boots.
 Validate write access where the secret is entered, not on the tenth stage
 of a pipeline.
 
+## 19. "Promote null to production?"
+
+**Problem.** The approval prompt on the first successful run read *Promote
+null to production?*. The declarative `input { message "... ${env.GIT_SHA}" }`
+directive is evaluated when the pipeline is parsed, before the *Checkout*
+stage sets `env.GIT_SHA`.
+
+**Fix.** Use the `input` *step* inside `steps { }` (evaluated when the stage
+runs) instead of the stage-level directive; `when { branch 'main' }` still
+guards the stage, and the 30-minute `timeout` option is unchanged.
+
+**Lesson.** Declarative directives (`input`, `environment`, `when`
+expressions) see parse-time state; anything computed in a stage belongs in a
+step.
+
+## 20. Operational notes from the first day
+
+- **The bastion is pinned to one IP.** `admin_cidr` is a `/32`; when the
+  laptop's public IP changed mid-session, `ssh management` timed out and it
+  looked like an outage. The fix is one line in `envs/dev.tfvars` and an
+  in-place security-group update (`Plan: 0 to add, 1 to change`).
+- **Anonymous GitHub API calls are a hard 60/hour per IP.** Five controller
+  rebuilds in an hour exhausted it and the branch scan slept 20 minutes for
+  the reset; a PAT lifts it to 5,000/hour and enables commit statuses. The
+  README now treats the token as expected, not optional.
+- **SNS e-mail confirmations get lost.** Re-issuing `aws sns subscribe` for
+  the same endpoint re-sends the confirmation without creating a duplicate.
+

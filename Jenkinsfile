@@ -203,21 +203,17 @@ pipeline {
             // `input` inside a stage holds the executor while waiting. Fine for
             // this demo (2 executors, one job); on a busy controller you would
             // move the input to a no-agent stage or use `agent none` + `agent`
-            // per stage. `beforeInput true` makes the branch check run BEFORE
-            // the prompt, otherwise non-main builds would also ask.
-            when {
-                branch 'main'
-                beforeInput true
-            }
+            // per stage. The `input` *step* (not the directive) is used so the
+            // message sees env.GIT_SHA, which is set at runtime in Checkout —
+            // the directive form is evaluated before any stage runs and showed
+            // "Promote null to production?" on the first real run.
+            when { branch 'main' }
             options {
                 timeout(time: 30, unit: 'MINUTES')
             }
-            input {
-                message "Promote ${env.GIT_SHA} to production?"
-                ok 'Deploy'
-            }
             steps {
-                echo 'approved'
+                input message: "Promote ${env.GIT_SHA} to production?", ok: 'Deploy'
+                echo "approved ${env.GIT_SHA}"
             }
             post { failure { markStageFailed() } }
         }
