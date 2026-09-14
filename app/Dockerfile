@@ -13,6 +13,10 @@ COPY package.json ./
 COPY src ./src
 COPY public ./public
 
+# The runtime never runs npm; drop the copy bundled with the base image (its
+# vendored `tar` carried CVE-2026-59873 and failed the CRITICAL image gate).
+RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+
 # Amazon RDS certificate authority so DATABASE_URL?sslmode=require verifies the server cert
 ADD --chmod=644 https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem /etc/ssl/certs/rds-global-bundle.pem
 ENV NODE_EXTRA_CA_CERTS=/etc/ssl/certs/rds-global-bundle.pem
