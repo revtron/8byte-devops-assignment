@@ -8,8 +8,8 @@ in parallel against those contracts, review each one, then review the merge.
 ## 1. Sequence
 
 1. **Read the assignment, write the spec.** Every decision with its reason
-   went into [`superpowers/specs/2026-09-13-8byte-devops-platform-design.md`](superpowers/specs/2026-09-13-8byte-devops-platform-design.md)
-   before any code: region, compute model, topology, environments, registry,
+   was written down in a design spec (kept locally; the decisions are
+   summarised in the README's *Architecture decisions* table) before any code: region, compute model, topology, environments, registry,
    CI tool, deploy mechanism, monitoring stack, notification channel, state,
    secrets, backups, and an explicit out-of-scope list. "Happy path first"
    was the rule; anything that would blow the time budget was written down as

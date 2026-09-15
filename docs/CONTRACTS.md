@@ -2,7 +2,7 @@
 
 # Cross-track contracts (binding for terraform / monitoring / jenkins tracks)
 
-Spec (authority): docs/superpowers/specs/2026-09-13-8byte-devops-platform-design.md — read it fully first.
+Authority: the design spec (kept locally); its decisions are summarised in the README's *Architecture decisions* table.
 
 ## Naming
 - Project prefix for every AWS resource name/tag: `8byte-` (e.g. `8byte-vpc`, `8byte-backend`). Tag every resource with `Project=8byte`, `Env=dev`, `ManagedBy=terraform`.

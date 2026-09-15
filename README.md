@@ -484,7 +484,7 @@ trailers. Every choice here is one I can explain and defend.
 │   ├── put-secrets.sh        writes Docker Hub / GitHub values into Secrets Manager
 │   ├── setup-ssh.sh / .ps1   installs ~/.ssh/config block and management/backend/mon shortcuts
 │   └── install-node-exporter.sh, install-promtail.sh
-└── docs/                     APPROACH.md, CHALLENGES.md, superpowers/specs/ (design spec)
+└── docs/                     APPROACH.md, CHALLENGES.md, CONTRACTS.md
 ```
 
 ## Teardown
