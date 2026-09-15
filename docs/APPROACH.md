@@ -54,7 +54,27 @@ in parallel against those contracts, review each one, then review the merge.
    validate` on both roots. A final read-only integration review across the
    whole tree ran in parallel with writing these documents.
 
-6. **Documentation last**, so it describes what exists rather than what was
+6. **Documentation first draft**, describing what existed at that point and
+   listing honestly what had only been verified statically.
+
+7. **Apply for real, then fix what only a real account can show.** Once AWS
+   credentials were available (2026-09-14) the stack was applied from a fresh
+   account: bootstrap root, then the main root in the documented order.
+   Static checks had passed; the real apply and first boots surfaced eight
+   more issues — RDS subnet-group naming, the free-plan backup cap, git's
+   `safe.directory` check killing cloud-init, Jenkins requiring Java 21,
+   AL2023's tmpfs `/tmp` taking the Jenkins node offline, anonymous GitHub
+   API throttling, a CRITICAL CVE in the base image caught by the image gate,
+   and a read-only registry token (CHALLENGES §13–§20). Each was fixed in
+   code, pushed, and rolled out by replacing the affected instance from
+   `main` — the same path a rebuild would take. The pipeline then ran green
+   end to end (push → staging via SSM → smoke test → manual approval → prod →
+   smoke test), commit statuses appeared on GitHub, and the alert path was
+   tested by stopping a container and receiving the firing and resolved
+   e-mails. The README's *What was verified on real infrastructure* section
+   records the evidence.
+
+8. **Documentation final pass**, so it describes what runs, not what was
    planned.
 
 ## 2. Reasoning for the major choices
@@ -86,11 +106,13 @@ in parallel against those contracts, review each one, then review the merge.
 - **Prometheus/Grafana/Loki, all file-provisioned.** Dashboards, datasources,
   rules and Alertmanager routing are JSON/YAML in git; a re-run of the
   bootstrap script reconciles the box.
-- **Static analysis where Docker was unavailable.** The build machine had no
+- **Static analysis first, real run second.** The build machine had no
   Docker, so everything that needs it was written to be verifiable another
   way: `terraform validate`, rendered templates syntax-checked with `bash -n`,
   YAML/JSON parsed, scripts exercised with fake `aws`/`docker`/`curl` on
-  `PATH`. What could not be verified is listed honestly in the README.
+  `PATH`. That caught the cheap bugs; the real apply caught the rest (step 7).
+  The lesson recorded in CHALLENGES: state what was verified and how, and
+  treat the first real run as part of the build, not as the demo.
 
 ## 3. Requirement checklist
 
@@ -118,5 +140,5 @@ in parallel against those contracts, review each one, then review the merge.
 | 3 | Alerting (extra) | [`monitoring/prometheus/rules/`](../monitoring/prometheus/rules), [`monitoring/alertmanager/alertmanager.yml.tpl`](../monitoring/alertmanager/alertmanager.yml.tpl) |
 | 4 | README: setup, architecture, security, cost | [`README.md`](../README.md) |
 | 4 | Secret management | [`terraform/modules/secrets`](../terraform/modules/secrets/main.tf), [`scripts/put-secrets.sh`](../scripts/put-secrets.sh), instance-role reads in bootstrap/deploy scripts |
-| 4 | Backup strategy | RDS `backup_retention_period = 7` in the database module; manual snapshot + restore procedure in the README; versioned state bucket |
+| 4 | Backup strategy | RDS automated backups (`db_backup_retention_days`, default 7; 1 on a free-plan account) in the database module; manual snapshot + restore procedure in the README; versioned state bucket; every image tag on Docker Hub |
 | Deliverables | Approach, challenges | this file, [`CHALLENGES.md`](CHALLENGES.md) |
