@@ -448,24 +448,19 @@ NOT EXISTS` at startup; a scheduled stop/start to cut cost.
 
 ## Use of AI tools
 
-This assignment was built with an AI coding assistant (Claude Code) as a pair
-programmer, and the commit history says so (`Co-Authored-By: Claude` trailers).
-The split of work:
+The architecture and every design decision in this repository are mine: the
+three-host bastion model, EC2 + Docker over ECS, logical prod/staging on one
+stack, SSM instead of SSH for deploys, the Prometheus/Grafana/Loki stack, the
+Terraform layout and state design, and the trade-offs listed in the decisions
+table above. I also ran the whole thing on a real AWS account — applying,
+approving deployments, testing the alerts and operating the hosts.
 
-- **Mine:** the requirements, the architecture and the decisions in the table
-  above (EC2 + Docker over ECS, the bastion/jump model, logical prod/staging
-  on one stack, SSM instead of SSH for deploys, Prometheus/Grafana/Loki, single
-  NAT, S3 + DynamoDB state), the choice of tooling, review of everything
-  generated, and operating the live environment on a real AWS account —
-  applying, approving deployments, testing alerts, fixing access when my IP
-  changed.
-- **The assistant's:** writing code and documentation from those decisions,
-  debugging the issues that surfaced on the real apply (§13–§20 in
-  [`docs/CHALLENGES.md`](docs/CHALLENGES.md)), and committing and pushing on
-  my behalf to save time.
-
-Every design choice and trade-off in this repository is one I can explain and
-defend, which is what the assignment asks for.
+I used an AI coding assistant (Claude Code) for assistance and debugging:
+turning those decisions into code and documentation faster, working through
+the issues that surfaced on the real apply (§13–§20 in
+[`docs/CHALLENGES.md`](docs/CHALLENGES.md)), and committing and pushing on my
+behalf — which is why the commit history carries `Co-Authored-By: Claude`
+trailers. Every choice here is one I can explain and defend.
 
 ## Repository layout
 
